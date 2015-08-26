@@ -16,9 +16,12 @@ from scipy.misc import derivative
 par = "EVEN"
 model = ["2p5"]
 vel = 0
+folder = "/home/diego/Documents/ROTORCmodels/"+par+"/M"+model[0]+"_V"+str(vel)+"/"
 
 # NRO Mode filename:
 modefname="MODE13"
+
+modefname = folder+modefname
 
 #Set up rotoc 'rs' angles:
 rs_ang = np.empty(12) #This initializes an array with 12 elements
@@ -62,10 +65,12 @@ for i in range(len(nro_ang)):
     r[:,i] = nro_out[i][:,4]
 
 # read model properties:
-RS_read = np.genfromtxt("RS_Dmod_2p5M_V0")
-VS_read = np.genfromtxt("VS_Dmod_2p5M_V0")
-GR_read = np.genfromtxt("GR_Dmod_2p5M_V0")
-GT_read = np.genfromtxt("GT_Dmod_2p5M_V0")
+RS_read = np.genfromtxt(folder+"RS_Dmod_"+model[0]+"M_V"+str(vel))
+VS_read = np.genfromtxt(folder+"VS_Dmod_"+model[0]+"M_V"+str(vel))
+GR_read = np.genfromtxt(folder+"GR_Dmod_"+model[0]+"M_V"+str(vel))
+GT_read = np.genfromtxt(folder+"GT_Dmod_"+model[0]+"M_V"+str(vel))
+G3m1_read = np.genfromtxt(folder+"GAM3m1_Dmod_"+model[0]+"M_V"+str(vel))
+Gamma1_read = np.genfromtxt(folder+"GAMMA1_Dmod_"+model[0]+"M_V"+str(vel))
 
 #### Do the r interpolation:
 idx = np.empty((len(r),2)) # this will store the i and i+1 position to use in the radial interpolations
@@ -85,6 +90,8 @@ rs_nro_ang = np.empty((len(RS_read),len(nro_ang)))
 vs_nro_ang = np.empty((len(RS_read),len(nro_ang)))
 gr_nro_ang = np.empty((len(RS_read),len(nro_ang)))
 gt_nro_ang = np.empty((len(RS_read),len(nro_ang)))
+g3m1_nro_ang = np.empty((len(G3m1_read),len(nro_ang)))
+gamma1_nro_ang = np.empty((len(Gamma1_read),len(nro_ang)))
 
 for i in range(len(RS_read)):
     # The f(new x) = np.interp(new x, x, f(x)) function does a linear interpolation
@@ -95,6 +102,10 @@ for i in range(len(RS_read)):
     gr_nro_ang[i] = np.interp(nro_ang,rs_ang,GR_read[i])
 
     gt_nro_ang[i] = np.interp(nro_ang,rs_ang,GT_read[i])
+    
+    g3m1_nro_ang[i] = np.interp(nro_ang,rs_ang,G3m1_read[i])
+    
+    gamma1_nro_ang[i] = np.interp(nro_ang,rs_ang,Gamma1_read[i])
 
 
 # Interpolate from RS to NRO r:
@@ -102,6 +113,9 @@ RS = np.empty((len(nro_out[0][:,0]),len(nro_ang)))
 VS = np.empty((len(nro_out[0][:,0]),len(nro_ang)))
 GR = np.empty((len(nro_out[0][:,0]),len(nro_ang)))
 GT = np.empty((len(nro_out[0][:,0]),len(nro_ang)))
+g3m1 = np.empty((len(nro_out[0][:,0]),len(nro_ang)))
+gamma1 = np.empty((len(nro_out[0][:,0]),len(nro_ang)))
+
 
 for i in range(len(nro_ang)):
     for j in range(len(RS[:,0])):
@@ -110,6 +124,8 @@ for i in range(len(nro_ang)):
         VS[j,i] = VS_read[idx[j,0],11]*wgt[j]+VS_read[idx[j,1],11]*(1.-wgt[j])
         GR[j,i] = GR_read[idx[j,0],11]*wgt[j]+GR_read[idx[j,1],11]*(1.-wgt[j])
         GT[j,i] = GT_read[idx[j,0],11]*wgt[j]+GT_read[idx[j,1],11]*(1.-wgt[j])
+        g3m1[j,i] = G3m1_read[idx[j,0],11]*wgt[j]+G3m1_read[idx[j,1],11]*(1.-wgt[j])
+        gamma1[j,i] = Gamma1_read[idx[j,0],11]*wgt[j]+Gamma1_read[idx[j,1],11]*(1.-wgt[j])
 
 
 ################ calculate DEL-DOT-XI with EQ 10 (clement98)
@@ -201,4 +217,5 @@ for i in range(len(nro_ang)):
 """
 
 
-bob_deldotxi_mode13 = np.genfromtxt("BOB_June8_2015/M2p5_V0_mode13_surf_perturbations",skip_header=2)
+
+#bob_deldotxi_mode13 = np.genfromtxt("BOB_June8_2015/M2p5_V0_mode13_surf_perturbations",skip_header=2)
