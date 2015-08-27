@@ -9,15 +9,37 @@ import numpy as np
 
 import pylab as plt
 
-import pyLegendre_anybf as pyL
-import scipy.interpolate as interp
-from scipy.misc import derivative
+import pandas as pd
+#import pyLegendre_anybf as pyL
+#import scipy.interpolate as interp
+#from scipy.misc import derivative
 
 par = "EVEN"
 model = ["2p5"]
 vel = 0
-folder = "/home/diego/Documents/ROTORCmodels/"+par+"/M"+model[0]+"_V"+str(vel)+"/"
 
+#--------------------------
+#M1p875
+m1vels = ["0","35","62","83","105","125","146","165","187","207"]
+#M2
+m2vels = ["0","36","63","84","106","127","148","168","190","211"]
+#M2p25
+m3vels = ["0","36","65","87","109","131","152","173","195","217"]
+#M2p5
+m4vels = ["0","37p5","67","89","111","134","156","178","200","222"]
+#M3
+m5vels = ["0"]
+if model[0] == "1p875": vels=m1vels
+if model[0] == "2p25": vels=m3vels
+if model[0] == "2": vels=m2vels
+if model[0] == "2p5": vels=m4vels
+if model[0] == "3": vels=m5vels
+#---------------------------
+
+
+folder = "/home/diego/Documents/ROTORCmodels/"+par+"/M"+model[0]+"_V"+vels[vel]+"/"
+
+rotorc_f = "/home/diego/Documents/From_Bob/Delta_Scuti_2010/"+model[0]+"Msun/"+model[0]+"Msun_V"+vels[vel]+"/"
 # NRO Mode filename:
 modefname="MODE13"
 
@@ -65,12 +87,12 @@ for i in range(len(nro_ang)):
     r[:,i] = nro_out[i][:,4]
 
 # read model properties:
-RS_read = np.genfromtxt(folder+"RS_Dmod_"+model[0]+"M_V"+str(vel))
-VS_read = np.genfromtxt(folder+"VS_Dmod_"+model[0]+"M_V"+str(vel))
-GR_read = np.genfromtxt(folder+"GR_Dmod_"+model[0]+"M_V"+str(vel))
-GT_read = np.genfromtxt(folder+"GT_Dmod_"+model[0]+"M_V"+str(vel))
-G3m1_read = np.genfromtxt(folder+"GAM3m1_Dmod_"+model[0]+"M_V"+str(vel))
-Gamma1_read = np.genfromtxt(folder+"GAMMA1_Dmod_"+model[0]+"M_V"+str(vel))
+RS_read = np.genfromtxt(folder+"RS_Dmod_"+model[0]+"M_V"+vels[vel])
+VS_read = np.genfromtxt(folder+"VS_Dmod_"+model[0]+"M_V"+vels[vel])
+GR_read = np.genfromtxt(folder+"GR_Dmod_"+model[0]+"M_V"+vels[vel])
+GT_read = np.genfromtxt(folder+"GT_Dmod_"+model[0]+"M_V"+vels[vel])
+G3m1_read = np.genfromtxt(folder+"GAM3m1_Dmod_"+model[0]+"M_V"+vels[vel])
+Gamma1_read = np.genfromtxt(folder+"GAMMA1_Dmod_"+model[0]+"M_V"+vels[vel])
 
 #### Do the r interpolation:
 idx = np.empty((len(r),2)) # this will store the i and i+1 position to use in the radial interpolations
@@ -215,7 +237,40 @@ for i in range(len(nro_ang)):
 #np.savetxt(modefname+"_deldotxi_eq10",deldotxi10)
 #np.savetxt(modefname+"_deldotxi_eq14",deldotxi14)
 """
+# Import gammas and other info (see below) for dT/T calculation. this comes from pulset_non_ad
+supportf = np.genfromtxt(rotorc_f+"visibility_file")
+supportf[:,1] = supportf[:,1]-2
+supportf_df = pd.DataFrame(supportf)
+supportf_df.columns = ['i','j','gamma1','g3m1','T','P','R','rho','g','v']
+g3m1_p = []
+gamma1_p = []
+r_p = []
+for i in range(10):
+    g3m1_p.append(np.array(supportf_df[supportf_df['j']==i]['g3m1']))
+    gamma1_p.append(np.array(supportf_df[supportf_df['j']==i]['gamma1']))
+    r_p.append(np.array(supportf_df[supportf_df['j']==i]['R']))
+g3m1_p = np.transpose(np.array(g3m1_p))
+gamma1_p = np.transpose(np.array(gamma1_p))
+r_p = np.transpose(np.array(r_p))
+#need to go from rotorc angles and radii to NRO's
+g3m1_p_nro_ang = np.empty((len(g3m1_p),len(nro_ang)))
+gamma1_p_nro_ang = np.empty((len(gamma1_p),len(nro_ang)))
+r_p_nro_ang = np.empty((len(gamma1_p),len(nro_ang)))
+
+for i in range(len(g3m1_p_nro_ang[:,0])):
+    g3m1_p_nro_ang[i,:] = np.interp(nro_ang,rs_ang[1:-1],g3m1_p[i])
+    gamma1_p_nro_ang[i,:] = np.interp(nro_ang,rs_ang[1:-1],gamma1_p[i])
+    r_p_nro_ang[i,:] = np.interp(nro_ang,rs_ang[1:-1],r_p[i])
+    
+g3m1_pulset = np.empty(RS.shape)
+gamma1_pulset = np.empty(RS.shape)
+#r_pulset = np.empty(RS.shape)
+for i in range(len(nro_ang)):
+    g3m1_pulset[:,i] = np.interp(RS[:,i],r_p_nro_ang[:,i],g3m1_p_nro_ang[:,i])
+    gamma1_pulset[:,i] = np.interp(RS[:,i],r_p_nro_ang[:,i],gamma1_p_nro_ang[:,i])
+#--------------------
 
 
+dt_t = -(g3m1_pulset)*deldotxi10
 
 #bob_deldotxi_mode13 = np.genfromtxt("BOB_June8_2015/M2p5_V0_mode13_surf_perturbations",skip_header=2)
