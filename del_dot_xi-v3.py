@@ -332,6 +332,7 @@ xi_r,xi_t,dt_t,r = calcdeldotxi(par,model,vel,modefname)
 xi_r_n,xi_t_n,dt_t_n = norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth)
 
 xi_r_rot,xi_t_rot,dt_t_rot = to_rotorc(xi_r_n,xi_t_n,dt_t_n)
+
 #container_t = pyL.legendre(dt_t[-1,:],8)
 #container_r = pyL.legendre(xi_r[-1,:],8)
 #bob_deldotxi_mode13 = np.genfromtxt("BOB_June8_2015/M2p5_V0_mode13_surf_perturbations",skip_header=2)
