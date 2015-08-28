@@ -7,10 +7,10 @@ Created on Fri Apr 10 00:10:11 2015
 
 import numpy as np
 
-import pylab as plt
+#import pylab as plt
 
 import pandas as pd
-import pyLegendre_anybf as pyL
+#import pyLegendre_anybf as pyL
 #import scipy.interpolate as interp
 #from scipy.misc import derivative
 
@@ -168,7 +168,7 @@ def calcdeldotxi(par,model,vel,modefname):
         # Calculation of deldotxi:
         deldotxi10[:,i] = (1./(-1.*VS[:,i]))*(ZP[:,i]+ZG[:,i]+xi_dot_g)
         
-    print (1./(-1.*VS[-1,-1])),ZP[-1,-1],ZG[-1,-1],xi_dot_g[-1]
+    #print (1./(-1.*VS[-1,-1])),ZP[-1,-1],ZG[-1,-1],xi_dot_g[-1]
     
     """
     ############### calculate DEL-DOT-XI with EQ 14 (clement98)
@@ -305,11 +305,33 @@ def norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth):
     
     return xi_r_n,xi_t_n,dt_t_n
     
+def to_rotorc(xi_r_n,xi_t_n,dt_t_n):
+    nro_ang = np.linspace(10,80,8)
+    rot_ang = np.linspace(4.5,85.5,10)
+    
+    xi_r_rot = np.empty((len(xi_r_n[:,0]),len(rot_ang)))
+    xi_t_rot = np.empty((len(xi_r_n[:,0]),len(rot_ang)))
+    dt_t_rot = np.empty((len(xi_r_n[:,0]),len(rot_ang)))
+    
+    for i in range(len(xi_r_n[:,0])):
+        #container_r = pyL.legendre(xi_r_n[-1,:],8)
+        #container_t = pyL.legendre(xi_t_n[-1,:],8)
+        #container_dt = pyL.legendre(dt_t_n[-1,:],8)
+    
+        xi_r_rot[i] = np.interp(rot_ang,nro_ang+xi_t_n[i,:],xi_r_n[i,:])
+        xi_t_rot[i] = np.interp(rot_ang,nro_ang+xi_t_n[i,:],xi_t_n[i,:])
+        dt_t_rot[i] = np.interp(rot_ang,nro_ang+xi_t_n[i,:],dt_t_n[i,:])
+        #xi_r_rot[i] = np.interp(rot_ang,container_r[:,0],xi_r_n[i,:])
+        #xi_t_rot[i] = np.interp(rot_ang,container_r[:,0],xi_t_n[i,:])
+        #dt_t_rot[i] = np.interp(rot_ang,container_r[:,0],dt_t_n[i,:])
+        
+    return xi_r_rot,xi_t_rot,dt_t_rot
+    
 xi_r,xi_t,dt_t,r = calcdeldotxi(par,model,vel,modefname)
         
 xi_r_n,xi_t_n,dt_t_n = norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth)
 
-
+xi_r_rot,xi_t_rot,dt_t_rot = to_rotorc(xi_r_n,xi_t_n,dt_t_n)
 #container_t = pyL.legendre(dt_t[-1,:],8)
 #container_r = pyL.legendre(xi_r[-1,:],8)
 #bob_deldotxi_mode13 = np.genfromtxt("BOB_June8_2015/M2p5_V0_mode13_surf_perturbations",skip_header=2)
