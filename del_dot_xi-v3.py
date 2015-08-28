@@ -19,9 +19,12 @@ model = ["2p5"]
 vel = 0 #index, not velocity!
 # NRO Mode filename:
 modefname="MODE13"
-
+norm_f = True
+scale = 0.1
+depth = 10 #radial zones down from the surface
 
 def calcdeldotxi(par,model,vel,modefname):
+    global folder, rotorc_f
     #--------------------------
     #M1p875
     m1vels = ["0","35","62","83","105","125","146","165","187","207"]
@@ -276,15 +279,37 @@ def calcdeldotxi(par,model,vel,modefname):
     dt_t = -(g3m1_pulset)*deldotxi10
     
     
-    return xi_r,xi_t,dt_t
+    return xi_r,xi_t,dt_t,RS
 
-
+def norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth):
+    global folder, rotorc_f
     
-xi_r,xi_t,dt_t = calcdeldotxi(par,model,vel,modefname)
+    xi_r_n = np.empty(xi_r[-(depth+1):-1,:].shape)
+    xi_t_n = np.empty(xi_r[-(depth+1):-1,:].shape)
+    dt_t_n = np.empty(xi_r[-(depth+1):-1,:].shape)
+    
+    i_max=np.argmax(xi_r[-1,:])
+    if norm_f:    
+        for i in range(depth):
+            xi_r_n[i,:] =  xi_r[i,:]/xi_r[i,i_max]
+            xi_t_n[i,:] =  xi_t[i,:]/xi_r[i,i_max]
+            dt_t_n[i,:] =  dt_t[i,:]/xi_r[i,i_max]
         
+        xi_r_n *= scale
+        xi_t_n *= scale
+        dt_t_n *= scale
+    else:
+        xi_r_n = xi_r * scale
+        xi_t_n = xi_t * scale
+        dt_t_n = dt_t * scale
+    
+    return xi_r_n,xi_t_n,dt_t_n
+    
+xi_r,xi_t,dt_t,r = calcdeldotxi(par,model,vel,modefname)
+        
+xi_r_n,xi_t_n,dt_t_n = norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth)
 
 
-container_t = pyL.legendre(dt_t[-1,:],8)
-
-container_r = pyL.legendre(xi_r[-1,:],8)
+#container_t = pyL.legendre(dt_t[-1,:],8)
+#container_r = pyL.legendre(xi_r[-1,:],8)
 #bob_deldotxi_mode13 = np.genfromtxt("BOB_June8_2015/M2p5_V0_mode13_surf_perturbations",skip_header=2)
