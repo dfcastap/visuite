@@ -34,8 +34,8 @@ else:
 """
 
 
-def run_nro(tfreq,folder):
-    global freq,freqs,rad_nodes,smixes,file_count,nmode
+def run_nro(tfreq,folder,par,nmode):
+    global freq,freqs,rad_nodes,smixes,file_count
     global c_flag,index,tempfreq,times,dmod
 
     nro_loc = '/home/diego/Documents/NROe/del_dot_xi_mod/nro'
@@ -94,7 +94,7 @@ def run_nro(tfreq,folder):
         if index==1:  
             c_flag = 1
         elif index==2:
-            print "Bad mode!"
+            print "Bad mode! Trying again..."
             c_flag = 0
         elif index==4:
             #np.savetxt("temp_freqs",freqs,fmt='%s')
@@ -115,14 +115,28 @@ def run_nro(tfreq,folder):
             child.expect('Option?')
             child.sendline('4')
             c_flag=-1
+            subprocess.call(['mv','MODE1','MODE_'+par+'_'+str(nmode)])
     
         elif c_flag==0:
             child.expect ('Option?')
-            child.sendline ('3')
-            child.expect('Eigenfrequency:')
-            tempfreq = np.float(tfreq) 
+            child.sendline ('1')
+            
+            child.expect('Continue scan (y/n)?')
+            child.sendline('n')
+            
+            child.expect('Option?')
+            child.sendline('3')
+            
+            child.expect ('Any change [n value]?')
+            child.sendline ('1 '+str(tfreq-step))
+            
             child.expect ('Any change [n value]?')
             child.sendline ('15')
+            #tempfreq = np.float(tfreq) 
+            #child.expect ('Any change [n value]?')
+            #child.sendline ('1 '+str(tfreq-step))
+            #child.expect ('Any change [n value]?')
+            #child.sendline ('15')
     
     return "NRO done! freq = "+ str(freq)
     #child.sendeof()

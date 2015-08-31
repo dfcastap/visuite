@@ -23,7 +23,7 @@ norm_f = True
 scale = 0.1
 depth = 10 #radial zones down from the surface
 
-def calcdeldotxi(par,model,vel,modefname):
+def calcdeldotxi(par,model,vel,modeloc,modefname):
     global folder, rotorc_f
     #--------------------------
     #M1p875
@@ -48,7 +48,7 @@ def calcdeldotxi(par,model,vel,modefname):
     
     rotorc_f = "/home/diego/Documents/From_Bob/Delta_Scuti_2010/"+model[0]+"Msun/"+model[0]+"Msun_V"+vels[vel]+"/"
     
-    modefname = folder+modefname
+    modefname = modeloc+modefname
     
     #Set up rotoc 'rs' angles:
     rs_ang = np.empty(12) #This initializes an array with 12 elements

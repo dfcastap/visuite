@@ -16,9 +16,9 @@ old_path = os.getcwd()
 par = "temp"
 model = ["2p5"]
 vel = 1 #index, not velocity!
+mode = 18
 
-#tfreq = 1.59692
-tfreq = 0.93025
+
 
 # Info for del dot xi calculation:------------------
 # NRO Mode filename:
@@ -53,6 +53,9 @@ folder = "/home/diego/Documents/ROTORCmodels/"+par+"/M"+model[0]+"_V"+vels[vel]+
 rotorc_f = "/home/diego/Documents/From_Bob/Delta_Scuti_2010/"+model[0]+"Msun/"+model[0]+"Msun_V"+vels[vel]+"/"
 
 bob_bin = "/home/diego/Documents/From_Bob/clotho_disc10_bin/"
+
+static_m = "/home/diego/Documents/ROTORCmodels/visibilities/"
+
 #check if visibility file from pulset exits for the selected model:
 
 v_file = glob.glob(rotorc_f+"visibility_file")
@@ -67,14 +70,27 @@ v_file = glob.glob(rotorc_f+"visibility_file")
 print "v_file OK!"
 
 ###### FULL MODE FILE GENERATION:
-print pyNRO.run_nro(tfreq,folder)
+
+temp_freqs = np.genfromtxt(folder+"temp_freqs")
+tfreq = temp_freqs[mode-1]
+print pyNRO.run_nro(tfreq,folder,par,mode)
+
+if not os.path.exists(static_m+model[0]+'Msun/'+'V'+vels[vel]):
+    os.makedirs(static_m+model[0]+'Msun/'+'V'+vels[vel])
+
+try:    
+    subprocess.call(['mv',folder+'MODE_'+par+'_'+str(mode),static_m+model[0]+'Msun/V'+vels[vel]+"/"+'MODE_'+par+'_'+str(mode)])
+except:
+    print "Something broke! Couldn't copy the Full mode file..."
 
 
 ###### del_DOT_xi>
+modeloc = static_m+model[0]+'Msun/V'+vels[vel]+"/"
+modefname = 'MODE_'+par+'_'+str(mode)
 
-#xi_r,xi_t,dt_t,r = ddxi.calcdeldotxi(par,model,vel,modefname)
+xi_r,xi_t,dt_t,r = ddxi.calcdeldotxi(par,model,vel,modeloc,modefname)
         
-#xi_r_n,xi_t_n,dt_t_n = ddxi.norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth)
+xi_r_n,xi_t_n,dt_t_n = ddxi.norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth)
 
-#xi_r_rot,xi_t_rot,dt_t_rot = ddxi.to_rotorc(xi_r_n,xi_t_n,dt_t_n)
+xi_r_rot,xi_t_rot,dt_t_rot = ddxi.to_rotorc(xi_r_n,xi_t_n,dt_t_n)
 
