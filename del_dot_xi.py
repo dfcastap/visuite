@@ -258,21 +258,25 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     gamma1_p = np.transpose(np.array(gamma1_p))
     r_p = np.transpose(np.array(r_p))
     #need to go from rotorc angles and radii to NRO's
-    g3m1_p_nro_ang = np.empty((len(g3m1_p),len(nro_ang)))
-    gamma1_p_nro_ang = np.empty((len(gamma1_p),len(nro_ang)))
-    r_p_nro_ang = np.empty((len(gamma1_p),len(nro_ang)))
-    
-    for i in range(len(g3m1_p_nro_ang[:,0])):
-        g3m1_p_nro_ang[i,:] = np.interp(nro_ang,rs_ang[1:-1],g3m1_p[i])
-        gamma1_p_nro_ang[i,:] = np.interp(nro_ang,rs_ang[1:-1],gamma1_p[i])
-        r_p_nro_ang[i,:] = np.interp(nro_ang,rs_ang[1:-1],r_p[i])
-        
+
+    g3m1_prset = np.empty((len(RS[:,0]),len(g3m1_p)))
+    gamma1_prset =  np.empty((len(RS[:,0]),len(g3m1_p)))
+    #r_pulset = np.empty(RS.shape)
+    for i in range(len(g3m1_p)):
+        g3m1_prset[:,i] = np.interp(RS[:,i],r_p[i],g3m1_p[i])
+        gamma1_prset[:,i] = np.interp(RS[:,i],r_p[i],gamma1_p[i])
+
     g3m1_pulset = np.empty(RS.shape)
     gamma1_pulset = np.empty(RS.shape)
-    #r_pulset = np.empty(RS.shape)
-    for i in range(len(nro_ang)):
-        g3m1_pulset[:,i] = np.interp(RS[:,i],r_p_nro_ang[:,i],g3m1_p_nro_ang[:,i])
-        gamma1_pulset[:,i] = np.interp(RS[:,i],r_p_nro_ang[:,i],gamma1_p_nro_ang[:,i])
+    #r_p_pulset = np.empty(RS.shape)
+    
+    
+    for i in range(len(g3m1_prset[:,0])):
+        g3m1_pulset[i,:] = np.interp(nro_ang,rs_ang[1:-1],g3m1_prset[i])
+        gamma1_pulset[i,:] = np.interp(nro_ang,rs_ang[1:-1],gamma1_prset[i])
+        #r_p_nro_ang[i,:] = np.interp(nro_ang,rs_ang[1:-1],r_p[i])
+        
+    
     #--------------------
         
         

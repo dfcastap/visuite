@@ -9,6 +9,7 @@ import numpy as np
 import glob,subprocess,os
 import del_dot_xi as ddxi
 import pyNRO_1_mode as pyNRO
+import pandas as pd
 old_path = os.getcwd()
 
 
@@ -66,7 +67,21 @@ if len(v_file)==0:
     subprocess.call([bob_bin+"pulsetnonadb.exe"])
     #print(glob.glob("*_ZAMS"))
     os.chdir(old_path)
-v_file = glob.glob(rotorc_f+"visibility_file")
+#v_file = glob.glob(rotorc_f+"visibility_file")
+"""
+supportf = np.genfromtxt(rotorc_f+"visibility_file")
+supportf[:,1] = supportf[:,1]-2
+supportf_df = pd.DataFrame(supportf)
+supportf_df.columns = ['i','j','gamma1','g3m1','T','P','R','rho','g','v']
+g3m1_p = []
+gamma1_p = []
+r_p = []
+for i in range(10):
+    g3m1_p.append(np.array(supportf_df[supportf_df['j']==i]['g3m1']))
+    gamma1_p.append(np.array(supportf_df[supportf_df['j']==i]['gamma1']))
+    r_p.append(np.array(supportf_df[supportf_df['j']==i]['R']))
+"""
+
 print "v_file OK!"
 
 ###### FULL MODE FILE GENERATION:
