@@ -14,17 +14,17 @@ import pandas as pd
 #import scipy.interpolate as interp
 #from scipy.misc import derivative
 
-par = "EVEN"
+par = "temp"
 model = ["2p5"]
-vel = 0 #index, not velocity!
+vel = 1 #index, not velocity!
 # NRO Mode filename:
-modefname="MODE13"
+modefname="MODE_temp_18"
 norm_f = True
 scale = 0.1
 depth = 10 #radial zones down from the surface
 
 def calcdeldotxi(par,model,vel,modeloc,modefname):
-    global folder, rotorc_f
+    global folder, rotorc_f,g3m1
     #--------------------------
     #M1p875
     m1vels = ["0","35","62","83","105","125","146","165","187","207"]
@@ -49,6 +49,7 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     rotorc_f = "/home/diego/Documents/From_Bob/Delta_Scuti_2010/"+model[0]+"Msun/"+model[0]+"Msun_V"+vels[vel]+"/"
     
     modefname = modeloc+modefname
+    #modefname = folder+modefname
     
     #Set up rotoc 'rs' angles:
     rs_ang = np.empty(12) #This initializes an array with 12 elements
@@ -241,7 +242,7 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     
     #np.savetxt(modefname+"_deldotxi_eq10",deldotxi10)
     #np.savetxt(modefname+"_deldotxi_eq14",deldotxi14)
-    """
+    
     # Import gammas and other info (see below) for dT/T calculation. this comes from pulset_non_ad
     supportf = np.genfromtxt(rotorc_f+"visibility_file")
     supportf[:,1] = supportf[:,1]-2
@@ -278,9 +279,10 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
         
     
     #--------------------
+    """ 
         
-        
-    dt_t = -(g3m1_pulset)*deldotxi10
+    #dt_t = -(g3m1_pulset)*deldotxi10
+    dt_t = -(g3m1)*deldotxi10
     
     
     return xi_r,xi_t,dt_t,RS
@@ -292,9 +294,10 @@ def norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth):
     xi_t_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     dt_t_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     
-    i_max=np.argmax(xi_r[-1,:])
+    
     if norm_f:    
-        for i in range(depth):
+        for i in np.arange(-(depth),0,1):
+            i_max=np.argmax(np.abs(xi_r[i,:]))
             xi_r_n[i,:] =  xi_r[i,:]/xi_r[i,i_max]
             xi_t_n[i,:] =  xi_t[i,:]/xi_r[i,i_max]
             dt_t_n[i,:] =  dt_t[i,:]/xi_r[i,i_max]
@@ -331,7 +334,8 @@ def to_rotorc(xi_r_n,xi_t_n,dt_t_n):
         
     return xi_r_rot,xi_t_rot,dt_t_rot
     
-#xi_r,xi_t,dt_t,r = calcdeldotxi(par,model,vel,modefname)
+
+#xi_r,xi_t,dt_t,r = calcdeldotxi(par,model,vel,"_",modefname)
         
 #xi_r_n,xi_t_n,dt_t_n = norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth)
 

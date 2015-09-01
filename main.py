@@ -10,13 +10,13 @@ import glob,subprocess,os
 import del_dot_xi as ddxi
 import pyNRO_1_mode as pyNRO
 import pandas as pd
-old_path = os.getcwd()
+vis_path = os.getcwd()
 
 
 #MODE info:
 par = "temp"
 model = ["2p5"]
-vel = 1 #index, not velocity!
+vel = 0 #index, not velocity!
 mode = 18
 
 
@@ -57,30 +57,23 @@ bob_bin = "/home/diego/Documents/From_Bob/clotho_disc10_bin/"
 
 static_m = "/home/diego/Documents/ROTORCmodels/visibilities/"
 
+
+
+
 #check if visibility file from pulset exits for the selected model:
 
 v_file = glob.glob(rotorc_f+"visibility_file")
-if len(v_file)==0:
+if True:
     os.chdir(rotorc_f)
     r_mod_name = glob.glob("*_ZAMS")
-    print subprocess.call(["cp",r_mod_name[0],"orcmod_pulset"])
+    subprocess.call(["cp",r_mod_name[0],"orcmod_pulset"])
     subprocess.call([bob_bin+"pulsetnonadb.exe"])
+    print "Generated visibility_file in "+rotorc_f
+    subprocess.call([bob_bin+"pulset_gammas.exe"]) #Generates Cmod with gammas
+    subprocess.call(["cp","Cmod",folder+"Dmod_"+model[0]+"M_V"+vels[vel]])
+    print "Generated new Dmod"
     #print(glob.glob("*_ZAMS"))
-    os.chdir(old_path)
-#v_file = glob.glob(rotorc_f+"visibility_file")
-"""
-supportf = np.genfromtxt(rotorc_f+"visibility_file")
-supportf[:,1] = supportf[:,1]-2
-supportf_df = pd.DataFrame(supportf)
-supportf_df.columns = ['i','j','gamma1','g3m1','T','P','R','rho','g','v']
-g3m1_p = []
-gamma1_p = []
-r_p = []
-for i in range(10):
-    g3m1_p.append(np.array(supportf_df[supportf_df['j']==i]['g3m1']))
-    gamma1_p.append(np.array(supportf_df[supportf_df['j']==i]['gamma1']))
-    r_p.append(np.array(supportf_df[supportf_df['j']==i]['R']))
-"""
+    os.chdir(vis_path)
 
 print "v_file OK!"
 
@@ -88,13 +81,16 @@ print "v_file OK!"
 
 temp_freqs = np.genfromtxt(folder+"temp_freqs")
 tfreq = temp_freqs[mode-1]
-print pyNRO.run_nro(tfreq,folder,par,mode)
+tfreq = 1.59692
+print pyNRO.run_nro(tfreq,folder,model[0],vels[vel],par,mode)
+print "done with NRO!"
 
 if not os.path.exists(static_m+model[0]+'Msun/'+'V'+vels[vel]):
     os.makedirs(static_m+model[0]+'Msun/'+'V'+vels[vel])
 
 try:    
     subprocess.call(['mv',folder+'MODE_'+par+'_'+str(mode),static_m+model[0]+'Msun/V'+vels[vel]+"/"+'MODE_'+par+'_'+str(mode)])
+    print "Mode file generation complete!"
 except:
     print "Something broke! Couldn't copy the Full mode file..."
 

@@ -34,16 +34,16 @@ else:
 """
 
 
-def run_nro(tfreq,folder,par,nmode):
+def run_nro(tfreq,folder,model,vel,par,nmode):
     global freq,freqs,rad_nodes,smixes,file_count
     global c_flag,index,tempfreq,times,dmod
 
     nro_loc = '/home/diego/Documents/NROe/del_dot_xi_mod/nro'
     c_flag = 99
     os.chdir(folder)
-    dmod = glob.glob("Dmod*")[0]
+    dmod = glob.glob("Dmod_"+model+"M_V"+vel)[0]
     print dmod
-    steps = [1e-5,5e-5,8e-5,1e-4,1.3e-4]
+    steps = [1e-4,5e-5,8e-5,1e-4,1.3e-4]
     step = steps[0]
     #if ifreq==0:
     #    ifreq = np.round(float(subprocess.check_output(['tail','-1','NRO_pts']).strip("\n").split("  ")[0]) - 1.5*step,5)
@@ -103,7 +103,6 @@ def run_nro(tfreq,folder,par,nmode):
             print "timeout!"
             c_flag = -1
             child.terminate()
-            return "nmodes= ", len(freqs)
         
         if c_flag==1:
             child.expect('Option?')
