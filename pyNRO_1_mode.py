@@ -63,7 +63,7 @@ def run_nro(tfreq,folder,model,vel,par,nmode):
     child.expect ('Option?')
     child.sendline ('3')
     child.expect ('Any change [n value]?')
-    child.sendline ('1 '+str(tfreq-step))
+    child.sendline ('1 '+str(tfreq-1.5*step))
     child.expect ('Any change [n value]?')
     step = steps[0]
     child.sendline ('3 '+str(step))
@@ -78,7 +78,13 @@ def run_nro(tfreq,folder,model,vel,par,nmode):
             child.expect("Frequency: ")
             freq = np.float(child.readline())
             #freqs.append(freq)
-            if freq == tfreq: c_flag=1
+            
+            if np.round(freq,4) == np.round(tfreq,4): 
+                c_flag=1
+            else:
+                c_flag=0
+            
+            c_flag=1
             #child.expect("Radial nodes: ")
             #rad_node = np.str(child.readline()).strip('\r\n')
             #rad_nodes.append(rad_node)
