@@ -6,6 +6,7 @@ Created on Mon Aug 31 01:04:06 2015
 """
 
 import numpy as np
+import pylab as plt
 import glob,subprocess,os
 import del_dot_xi as ddxi
 import pyNRO_1_mode as pyNRO
@@ -17,7 +18,7 @@ vis_path = os.getcwd()
 par = "temp"
 model = ["2p5"]
 vel = 0 #index, not velocity!
-mode = 18
+mode = 51
 
 
 
@@ -81,7 +82,7 @@ print "v_file OK!"
 
 temp_freqs = np.genfromtxt(folder+"temp_freqs")
 tfreq = temp_freqs[mode-1]
-tfreq = 1.59692
+#tfreq = 1.59692
 print pyNRO.run_nro(tfreq,folder,model[0],vels[vel],par,mode)
 print "done with NRO!"
 
@@ -98,10 +99,14 @@ except:
 ###### del_DOT_xi>
 modeloc = static_m+model[0]+'Msun/V'+vels[vel]+"/"
 modefname = 'MODE_'+par+'_'+str(mode)
+#modefname = 'MODE13'
 
-xi_r,xi_t,dt_t,r = ddxi.calcdeldotxi(par,model,vel,modeloc,modefname)
+xi_r,xi_t,dt_t,zg,r = ddxi.calcdeldotxi(par,model,vel,modeloc,modefname)
         
 xi_r_n,xi_t_n,dt_t_n = ddxi.norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth)
 
 xi_r_rot,xi_t_rot,dt_t_rot = ddxi.to_rotorc(xi_r_n,xi_t_n,dt_t_n)
 
+plt.plot(xi_r_rot[-1,:])
+plt.plot(xi_t_rot[-1,:])
+plt.plot(dt_t_rot[-1,:])
