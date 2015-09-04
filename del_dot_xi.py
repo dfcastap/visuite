@@ -24,6 +24,14 @@ scale = 0.1
 depth = 10 #radial zones down from the surface
 
 def calcdeldotxi(par,model,vel,modeloc,modefname):
+    G = 6.67259e-8
+    Msun = 1.99e33
+    Rsun = 6.958e10
+
+    PIGR = 4.*np.pi*G*((Rsun)**2)
+    SPIGR = np.sqrt(PIGR)
+    freq_unit = np.sqrt(4.*np.pi*G)
+    
     global folder, rotorc_f,g3m1
     #--------------------------
     #M1p875
@@ -285,15 +293,15 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     dt_t = -(g3m1)*deldotxi10
     
     
-    return xi_r,xi_t,dt_t,ZG,RS
+    return xi_r,xi_t,dt_t,ZG*PIGR,RS
 
-def norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth):
+def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth):
     global folder, rotorc_f
     
     xi_r_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     xi_t_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     dt_t_n = np.empty(xi_r[-(depth+1):-1,:].shape)
-    
+    ZG_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     
     if norm_f:    
         for i in np.arange(-(depth),0,1):
@@ -301,24 +309,28 @@ def norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth):
             xi_r_n[i,:] =  xi_r[i,:]/xi_r[i,i_max]
             xi_t_n[i,:] =  xi_t[i,:]/xi_r[i,i_max]
             dt_t_n[i,:] =  dt_t[i,:]/xi_r[i,i_max]
+            ZG_n[i,:] =  ZG[i,:]/xi_r[i,i_max]
         
         xi_r_n *= scale
         xi_t_n *= scale
         dt_t_n *= scale
+        ZG_n *= scale
     else:
         xi_r_n = xi_r * scale
         xi_t_n = xi_t * scale
         dt_t_n = dt_t * scale
+        ZG_n = ZG * scale
     
-    return xi_r_n,xi_t_n,dt_t_n
+    return xi_r_n,xi_t_n,dt_t_n,ZG_n
     
-def to_rotorc(xi_r_n,xi_t_n,dt_t_n):
+def to_rotorc(xi_r_n,xi_t_n,dt_t_n,ZG_n):
     nro_ang = np.linspace(10,80,8)
     rot_ang = np.linspace(4.5,85.5,10)
     
     xi_r_rot = np.empty((len(xi_r_n[:,0]),len(rot_ang)))
     xi_t_rot = np.empty((len(xi_r_n[:,0]),len(rot_ang)))
     dt_t_rot = np.empty((len(xi_r_n[:,0]),len(rot_ang)))
+    ZG_rot = np.empty((len(xi_r_n[:,0]),len(rot_ang)))
     
     for i in range(len(xi_r_n[:,0])):
         #container_r = pyL.legendre(xi_r_n[-1,:],8)
@@ -328,11 +340,12 @@ def to_rotorc(xi_r_n,xi_t_n,dt_t_n):
         xi_r_rot[i] = np.interp(rot_ang,nro_ang+xi_t_n[i,:],xi_r_n[i,:])
         xi_t_rot[i] = np.interp(rot_ang,nro_ang+xi_t_n[i,:],xi_t_n[i,:])
         dt_t_rot[i] = np.interp(rot_ang,nro_ang+xi_t_n[i,:],dt_t_n[i,:])
+        ZG_rot[i] = np.interp(rot_ang,nro_ang+xi_t_n[i,:],ZG_n[i,:])
         #xi_r_rot[i] = np.interp(rot_ang,container_r[:,0],xi_r_n[i,:])
         #xi_t_rot[i] = np.interp(rot_ang,container_r[:,0],xi_t_n[i,:])
         #dt_t_rot[i] = np.interp(rot_ang,container_r[:,0],dt_t_n[i,:])
         
-    return xi_r_rot,xi_t_rot,dt_t_rot
+    return xi_r_rot,xi_t_rot,dt_t_rot,ZG_rot
     
 
 #r,xi_r,xi_t,dt_t,r = calcdeldotxi(par,model,vel,"_",modefname)

@@ -26,8 +26,8 @@ mode = 51
 # NRO Mode filename:
 modefname="MODE1"
 norm_f = True
-scale = 0.1
-depth = 10 #radial zones down from the surface
+scale = 0.05
+depth = 20 #radial zones down from the surface
 #---------------------------------------------------
 
 
@@ -103,10 +103,12 @@ modefname = 'MODE_'+par+'_'+str(mode)
 
 xi_r,xi_t,dt_t,zg,r = ddxi.calcdeldotxi(par,model,vel,modeloc,modefname)
         
-xi_r_n,xi_t_n,dt_t_n = ddxi.norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth)
+xi_r_n,xi_t_n,dt_t_n,zg_n = ddxi.norm_and_scale(xi_r,xi_t,dt_t,zg,norm_f,scale,depth)
 
-xi_r_rot,xi_t_rot,dt_t_rot = ddxi.to_rotorc(xi_r_n,xi_t_n,dt_t_n)
+xi_r_rot,xi_t_rot,dt_t_rot,zg_rot = ddxi.to_rotorc(xi_r_n,xi_t_n,dt_t_n,zg_n)
 
-plt.plot(xi_r_rot[-1,:])
-plt.plot(xi_t_rot[-1,:])
-plt.plot(dt_t_rot[-1,:])
+plt.plot(xi_r_rot[-1,:],label=r"$\xi_{r}$")
+#plt.plot(xi_t_rot[0,:])
+plt.plot(dt_t_rot[-1,:],label=r"$dT/T$")
+plt.legend(loc="best")
+plt.grid()
