@@ -293,7 +293,7 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     dt_t = -(g3m1)*deldotxi10
     
     
-    return xi_r,xi_t,dt_t,ZG*PIGR,RS
+    return xi_r,xi_t,dt_t,ZG*PIGR/Rsun,RS
 
 def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth):
     global folder, rotorc_f
