@@ -23,7 +23,7 @@ norm_f = True
 scale = 0.1
 depth = 10 #radial zones down from the surface
 
-def calcdeldotxi(par,model,vel,modeloc,modefname):
+def calcdeldotxi(par,model,vel,modeloc,modefname,sigma):
     G = 6.67259e-8
     Msun = 1.99e33
     Rsun = 6.958e10
@@ -171,11 +171,25 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     # xi_t also needs to be multiplied by sin(theta)cos(theta)
     xi_t = np.transpose([ZT[:,i]*RS[:,i]*np.sin(np.deg2rad(nro_ang[i]))*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
     
+    dPhi = ZG
+    
+    dP = ZP
+    
+    if par=="ODD":
+        print "Odd mode..."
+        xi_r = np.transpose([ZR[:,i]*RS[:,i]*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
+        
+        xi_t = np.transpose([(ZT[:,i] - ZP[:,i]/(sigma*np.cos(np.deg2rad(nro_ang[i])))**2)*np.sin(np.deg2rad(nro_ang[i]))*np.cos(np.deg2rad(nro_ang[i]))**2 for i in range(len(nro_ang))])
+        
+        dPhi = np.transpose([ZR[:,i]*ZG[:,i]*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
+        
+        dP = np.transpose([ZR[:,i]*ZP[:,i]*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
+    
     for i in range(len(nro_ang)):
         # Calculation of xi dot g to be used in eq 10
         xi_dot_g = xi_r[:,i]*GR[:,i]+xi_t[:,i]*GT[:,i]
         # Calculation of deldotxi:
-        deldotxi10[:,i] = (1./(-1.*VS[:,i]))*(ZP[:,i]+ZG[:,i]+xi_dot_g)
+        deldotxi10[:,i] = (1./(-1.*VS[:,i]))*(dP[:,i]+dPhi[:,i]+xi_dot_g)
         
     #print (1./(-1.*VS[-1,-1])),ZP[-1,-1],ZG[-1,-1],xi_dot_g[-1]
     
@@ -293,7 +307,8 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     dt_t = -(g3m1)*deldotxi10
     
     
-    return xi_r,xi_t,dt_t,ZG*PIGR/Rsun,RS
+    
+    return xi_r,xi_t,dt_t,dPhi*PIGR/Rsun,RS
 
 def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth):
     global folder, rotorc_f
