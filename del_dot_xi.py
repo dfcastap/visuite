@@ -156,12 +156,12 @@ def calcdeldotxi(par,model,vel,modeloc,modefname,sigma):
     for i in range(len(nro_ang)):
         for j in range(len(RS[:,0])):
             # For each value of r, the appropriate RS, VS, GR, GT are used using the indexes found in line 77
-            RS[j,i] = RS_read[idx[j,0],11]*wgt[j]+RS_read[idx[j,1],11]*(1.-wgt[j])
-            VS[j,i] = VS_read[idx[j,0],11]*wgt[j]+VS_read[idx[j,1],11]*(1.-wgt[j])
-            GR[j,i] = GR_read[idx[j,0],11]*wgt[j]+GR_read[idx[j,1],11]*(1.-wgt[j])
-            GT[j,i] = GT_read[idx[j,0],11]*wgt[j]+GT_read[idx[j,1],11]*(1.-wgt[j])
-            g3m1[j,i] = G3m1_read[idx[j,0],11]*wgt[j]+G3m1_read[idx[j,1],11]*(1.-wgt[j])
-            gamma1[j,i] = Gamma1_read[idx[j,0],11]*wgt[j]+Gamma1_read[idx[j,1],11]*(1.-wgt[j])
+            RS[j,i] = rs_nro_ang[idx[j,0],i]*wgt[j]+rs_nro_ang[idx[j,1],i]*(1.-wgt[j])
+            VS[j,i] = vs_nro_ang[idx[j,0],i]*wgt[j]+vs_nro_ang[idx[j,1],i]*(1.-wgt[j])
+            GR[j,i] = gr_nro_ang[idx[j,0],i]*wgt[j]+gr_nro_ang[idx[j,1],i]*(1.-wgt[j])
+            GT[j,i] = gt_nro_ang[idx[j,0],i]*wgt[j]+gt_nro_ang[idx[j,1],i]*(1.-wgt[j])
+            g3m1[j,i] = g3m1_nro_ang[idx[j,0],i]*wgt[j]+g3m1_nro_ang[idx[j,1],i]*(1.-wgt[j])
+            gamma1[j,i] = gamma1_nro_ang[idx[j,0],i]*wgt[j]+gamma1_nro_ang[idx[j,1],i]*(1.-wgt[j])
     
     
     ################ calculate DEL-DOT-XI with EQ 10 (clement98)
@@ -171,19 +171,21 @@ def calcdeldotxi(par,model,vel,modeloc,modefname,sigma):
     # xi_t also needs to be multiplied by sin(theta)cos(theta)
     xi_t = np.transpose([ZT[:,i]*RS[:,i]*np.sin(np.deg2rad(nro_ang[i]))*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
     
-    dPhi = ZG
+    dPhi = 1.*ZG
     
-    dP = ZP
+    dP = 1.*ZP
     
     if par=="ODD":
         print "Odd mode..."
-        xi_r = np.transpose([ZR[:,i]*RS[:,i]*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
+        xi_r = np.transpose([ZR[:,i]*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
         
-        xi_t = np.transpose([(ZT[:,i] - ZP[:,i]/(sigma*np.cos(np.deg2rad(nro_ang[i])))**2)*np.sin(np.deg2rad(nro_ang[i]))*np.cos(np.deg2rad(nro_ang[i]))**2 for i in range(len(nro_ang))])
+        #xi_t = np.transpose([(ZT[:,i] - ZP[:,i]/(sigma*np.cos(np.deg2rad(nro_ang[i])))**2)*np.sin(np.deg2rad(nro_ang[i]))*np.cos(np.deg2rad(nro_ang[i]))**2 for i in range(len(nro_ang))])
         
-        dPhi = np.transpose([ZR[:,i]*ZG[:,i]*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
+        xi_t = np.transpose([(np.sin(np.deg2rad(nro_ang[i]))*np.cos(np.deg2rad(nro_ang[i]))**2) * ZT[:,i] - np.sin(np.deg2rad(nro_ang[i]))*ZP[:,i]/(sigma**2) for i in range(len(nro_ang))])
         
-        dP = np.transpose([ZR[:,i]*ZP[:,i]*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
+        dPhi = np.transpose([ZG[:,i]*RS[:,i]*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
+        
+        dP = np.transpose([ZP[:,i]*RS[:,i]*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
     
     for i in range(len(nro_ang)):
         # Calculation of xi dot g to be used in eq 10
@@ -191,7 +193,8 @@ def calcdeldotxi(par,model,vel,modeloc,modefname,sigma):
         # Calculation of deldotxi:
         deldotxi10[:,i] = (1./(-1.*VS[:,i]))*(dP[:,i]+dPhi[:,i]+xi_dot_g)
         
-    #print (1./(-1.*VS[-1,-1])),ZP[-1,-1],ZG[-1,-1],xi_dot_g[-1]
+        
+    
     
     """
     ############### calculate DEL-DOT-XI with EQ 14 (clement98)
@@ -306,9 +309,9 @@ def calcdeldotxi(par,model,vel,modeloc,modefname,sigma):
     #dt_t = -(g3m1_pulset)*deldotxi10
     dt_t = -(g3m1)*deldotxi10
     
+    print g3m1[-1,-1],(1./(-1.*VS[-1,-1])),dP[-1,-1],dPhi[-1,-1],xi_dot_g[-1]
     
-    
-    return xi_r,xi_t,dt_t,dPhi*PIGR/Rsun,RS
+    return xi_r,xi_t,dt_t,dPhi*PIGR/Rsun,RS,ZP
 
 def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth):
     global folder, rotorc_f

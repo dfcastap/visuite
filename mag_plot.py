@@ -9,7 +9,7 @@ import numpy as np
 import pylab as plt
 import glob
 
-ell = 6
+ell = 0
 colors = ["red","blue","green","k"]
 if ell%2==1:
     par = "ODD"
