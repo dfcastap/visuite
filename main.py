@@ -150,7 +150,7 @@ def run_visc_pert(model,vel,mode,par,sigma):
     global xi_r,xi_t,dt_t,zg,r
     global xi_r_n,xi_t_n,dt_t_n,zg_n
     
-    xi_r,xi_t,dt_t,zg,r,zp = ddxi.calcdeldotxi(par,model,vel,modeloc,modefname,sigma)
+    xi_r,xi_t,dt_t,zg,r,zp,sig = ddxi.calcdeldotxi(par,model,vel,modeloc,modefname)
             
     xi_r_n,xi_t_n,dt_t_n,zg_n = ddxi.norm_and_scale(xi_r,xi_t,dt_t,zg,norm_f,scale,depth)
 
@@ -251,16 +251,16 @@ def save_pert(model,vel,par,mode,l,n):
 
 """
 #MODE info:
-par = "temp"
+par = "ODD"
 model = ["2p5"]
 vel = 0 #index, not velocity!
-modes = [3]
-mode_by_freq = False
+modes = [61]
+mode_by_freq = True
 clic = False
 new_mags = False
-save_perturbation = False
+save_perturbation = True
 
-plot_contour = False
+plot_contour = True
 #freqs = [1.58717,2.05922,2.49359,2.95717,3.46299,3.99529,4.54267,5.09092,5.64618] # l=0, M2p5 V=0
 #modes = [51, 69, 78, 85, 92, 100, 106, 114, 122] # l=0, M2p5 V=0
 
@@ -280,6 +280,7 @@ plot_contour = False
 
 
 #freqs = [1.43741,1.59521,1.90170,2.18703,2.73819,3.29288,3.85415]
+freqs = [2.18703]
 
 dt_grid = 500
 
