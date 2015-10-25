@@ -76,7 +76,7 @@ def find_name(model,vel,par,mode):
             
     return temp_modes[mode-1]
 
-def run_visc_pert(model,vel,mode,par,sigma):
+def run_visc_pert(model,vel,mode,par,sigma,reese):
     # Info for del dot xi calculation:------------------
     # NRO Mode filename:
     #modefname="MODE1"
@@ -86,7 +86,6 @@ def run_visc_pert(model,vel,mode,par,sigma):
     #---------------------------------------------------
     
     clic_run = True
-    global zp
     
     
     v = find_vel(model,vel)
@@ -147,12 +146,12 @@ def run_visc_pert(model,vel,mode,par,sigma):
     s_model = np.genfromtxt(glob.glob(static_m+model[0]+'Msun/'+model[0]+'Msun_V'+v+"*")[0])
     
     global xi_r_rot,xi_t_rot,dt_t_rot,zg_rot    
-    global xi_r,xi_t,dt_t,zg,r
+    global xi_r,xi_t,dt_t,zg,r,zp
     global xi_r_n,xi_t_n,dt_t_n,zg_n
     
     xi_r,xi_t,dt_t,zg,r,zp,sig = ddxi.calcdeldotxi(par,model,vel,modeloc,modefname)
             
-    xi_r_n,xi_t_n,dt_t_n,zg_n = ddxi.norm_and_scale(xi_r,xi_t,dt_t,zg,norm_f,scale,depth)
+    xi_r_n,xi_t_n,dt_t_n,zg_n = ddxi.norm_and_scale(xi_r,xi_t,dt_t,zg,norm_f,scale,depth,reese,sig)
 
     a_r = scint.trapz(xi_r_n[-1,:])
     
@@ -258,9 +257,10 @@ modes = [61]
 mode_by_freq = True
 clic = False
 new_mags = False
-save_perturbation = True
+save_perturbation = False
 
-plot_contour = True
+plot_contour = False
+reese = False
 #freqs = [1.58717,2.05922,2.49359,2.95717,3.46299,3.99529,4.54267,5.09092,5.64618] # l=0, M2p5 V=0
 #modes = [51, 69, 78, 85, 92, 100, 106, 114, 122] # l=0, M2p5 V=0
 
@@ -270,17 +270,20 @@ plot_contour = True
 #freqs = [0.85613,1.03514,1.28624,1.54099,1.79625,2.12890,2.64669,3.17963] # l=4 M2p5 V=0
 #modes = [12,26,40,49,61,72,80]
 
-#freqs = [1.97688,2.25056,2.82636,3.39865,3.97414,4.55198,5.12160] # l=6 M2p5 V=0
-#modes = [67,75,83,91]
+
+#freqs = [1.11169,1.30506,1.55074,1.63928,1.97688,2.25056,2.82636,3.39865] # l=6 M2p5 V=0
+#modes = [31, 42, 50, 55, 67, 75, 83, 91]
 
 #freqs = [0.78296,1.63480,2.16027,2.66899,3.18255,3.70941] #l=1 M2p5 V=0
 #modes = [5, 61,81,89,96,104] #l=1 M2p5 V0
 
 #freqs = [1.08830,1.42856,1.68216,2.06952,2.54134,3.04737,3.57597] #l=3 M2p5 V=0
+#modes = [34, 52, 64, 78, 87, 94, 102]
 
+#freqs = [0.85367,0.99406,1.18376,1.43741,1.59521,1.90170,2.18703,2.73819,3.29288,3.85415] # l=5 M2p5 V=0
+#freqs = [1.43741,1.59521,1.90170,2.18703,2.73819]
 
-#freqs = [1.43741,1.59521,1.90170,2.18703,2.73819,3.29288,3.85415]
-freqs = [2.18703]
+freqs = [1.63480]
 
 dt_grid = 500
 
@@ -291,9 +294,10 @@ if mode_by_freq==True:
 for mode in modes:
     sigma = find_sigma(model,vel,par,mode)
     #Find the perturbed models!
-    modeloc,pmodels = run_visc_pert(model,vel,mode,par,sigma)
+
+    modeloc,pmodels = run_visc_pert(model,vel,mode,par,sigma,reese)
     if plot_contour == True:
-        make_contour(r,xi_r,model,vel,par,mode)
+        make_contour(r,zp,model,vel,par,mode)
         
     if save_perturbation==True:
         save_pert(model,vel,par,mode,"1","1")
@@ -305,13 +309,13 @@ for mode in modes:
         try:
             subprocess.call(['rm',modeloc+"magnitudes_MODE_"+str(mode)])
         except:
-            print "No mag file to erase!"    
+            print "No mag file to erase!"
     
     if clic==True:
         #Ugly way of running pyCLIC:
         clic_folder = "/home/diego/Documents/pyCLIC/test/"
         incl = [90.0]
-        rzone = 1
+        rzone = 2
         
         for i in incl:
             subprocess.call(['cp',modeloc+"model_MODE_"+str(mode)+"_r"+str(rzone),clic_folder])

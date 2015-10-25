@@ -111,7 +111,7 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     Gamma1_read = np.genfromtxt(folder+"GAMMA1_Dmod_"+model[0]+"M_V"+vels[vel])
     
     #### Do the r interpolation:
-    idx = np.empty((len(r),2)) # this will store the i and i+1 position to use in the radial interpolations
+    idx = np.zeros((len(r),2),dtype=int) # this will store the i and i+1 position to use in the radial interpolations
     wgt = np.empty(len(r)) # this will save the interpolation factor to use with all the rotorc variables
     j=0
     for i in range(len(r[:,0])):
@@ -198,8 +198,26 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
         deldotxi10[:,i] = (1./(-1.*VS[:,i]))*(dP[:,i]+dPhi[:,i]+xi_dot_g)
         
         
+    ####### eq 13:
+    global xi_t_e13
+    xi_t_e13 = np.empty(xi_t.shape)
     
     
+    for i in range(len(ZR[:,0])):
+        data1 = dP[i,:]
+        container1 = pyL.legendre(data1,8)
+        
+        df = (container1[1:-1,1]-container1[0:-2,1])/(container1[1:-1,0]-container1[0:-2,0])
+        f_df = (np.interp(nro_ang,container1[0:-2,0],df))
+        
+        xi_t_e13[i,:] = (1./sigma**2)*(f_df/ZR[i,:])
+
+    deldotxi10_e13 = np.empty((len(nro_out[0][:,0]),len(nro_ang)))        
+    for i in range(len(nro_ang)):
+        # Calculation of xi dot g to be used in eq 10
+        xi_dot_g_e13 = xi_r[:,i]*GR[:,i]+xi_t_e13[:,i]*GT[:,i]
+        # Calculation of deldotxi:
+        deldotxi10_e13[:,i] = (1./(-1.*VS[:,i]))*(dP[:,i]+dPhi[:,i]+xi_dot_g_e13)
     """
     ############### calculate DEL-DOT-XI with EQ 14 (clement98)
     deldotxi14 = np.empty((len(nro_out[0][:,0]),len(nro_ang)))
@@ -329,14 +347,17 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
         
     #dt_t = -(g3m1_pulset)*deldotxi10
     dt_t = -(g3m1)*deldotxi10
+    dt_t_e13 = -(g3m1)*deldotxi10_e13
     
-    print g3m1[-1,-1],(1./(-1.*VS[-1,-1])),dP[-1,-1],dPhi[-1,-1],xi_dot_g[-1]
+    print dt_t[-1,:]
+    print dt_t_e13[-1,:]
     
-    return xi_r,xi_t,dt_t,dPhi*PIGR/Rsun,RS,ZP,sigma
+    return xi_r,xi_t,dt_t,dPhi*PIGR/Rsun,RS,dP,sigma
 
-def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth):
+def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth,reese,sig):
     global folder, rotorc_f
     
+    t_reese = 0.01/sig
     xi_r_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     xi_t_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     dt_t_n = np.empty(xi_r[-(depth+1):-1,:].shape)
@@ -359,6 +380,22 @@ def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth):
         xi_t_n = xi_t * scale
         dt_t_n = dt_t * scale
         ZG_n = ZG * scale
+        
+    if reese:
+        for i in np.arange(-(depth),0,1):
+            i_max=np.argmax(np.abs(xi_r[i,:]))
+            xi_r_n[i,:] =  xi_r[i,:]/xi_r[i,i_max]
+            xi_t_n[i,:] =  xi_t[i,:]/xi_r[i,i_max]
+            dt_t_n[i,:] =  dt_t[i,:]/xi_r[i,i_max]
+            ZG_n[i,:] =  ZG[i,:]/xi_r[i,i_max]
+            
+        xi_r_n *= t_reese
+        xi_t_n *= t_reese
+        dt_t_n *= t_reese
+        ZG_n *= t_reese
+        print "Reese normalization: "+str(t_reese)
+        
+        
     
     return xi_r_n,xi_t_n,dt_t_n,ZG_n
     
@@ -387,17 +424,17 @@ def to_rotorc(xi_r_n,xi_t_n,dt_t_n,ZG_n):
     return xi_r_rot,xi_t_rot,dt_t_rot,ZG_rot
     
 
-"""
+
 import pyLegendre_anybf as pyL
 import seaborn as sns
 sns.set(style="white",rc={"figure.figsize": (8, 8),'axes.labelsize': 16,
                               'ytick.labelsize': 12,'xtick.labelsize': 12,
                               'legend.fontsize': 16,'axes.titlesize':18})  
                               
-mode = "MODE16"
+mode = "MODE15"
 #r,xi_r,xi_t,dt_t,r = calcdeldotxi(par,model,vel,"_",modefname)
 xi_r,xi_t,dt_t,zg,r,zp,sigma = calcdeldotxi("ODD",["2p5"],0,"",mode)
-
+"""
 f = open("M2p5_V0_"+mode+"_perturbations","w")  
 f.write("M2p5, V=0, "+ mode+" sigma = "+str(sigma)+"\n")
 f.write("n_angle, r, xi_r, xi_t, dT/T\n")
@@ -407,6 +444,7 @@ for i in range(len(r[:,0])-10,len(r[:,0])):
         f.write("%i %8.5f %8.5f %8.5f %8.5f\n"%(j+1,r[i,j],xi_r[i,j],xi_t[i,j],dt_t[i,j])) 
         
 f.close()
+"""
 #xi_r_n,xi_t_n,dt_t_n = norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth)
 
 #xi_r_rot,xi_t_rot,dt_t_rot = to_rotorc(xi_r_n,xi_t_n,dt_t_n)
@@ -414,4 +452,3 @@ f.close()
 #container_t = pyL.legendre(dt_t[-1,:],8)
 #container_r = pyL.legendre(xi_r[-1,:],8)
 #bob_deldotxi_mode13 = np.genfromtxt("BOB_June8_2015/M2p5_V0_mode13_surf_perturbations",skip_header=2)
-"""

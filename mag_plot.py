@@ -8,9 +8,14 @@ Created on Wed Sep  9 13:39:55 2015
 import numpy as np
 import pylab as plt
 import glob
+import seaborn as sns
+sns.set(style="white",rc={"figure.figsize": (8, 8),'axes.labelsize': 16,
+                              'ytick.labelsize': 12,'xtick.labelsize': 12,
+                              'legend.fontsize': 16,'axes.titlesize':18})
+                              
 
-ell = 0
-colors = ["red","blue","green","k"]
+ell = 1
+colors = ["red","blue","green","magenta"]
 if ell%2==1:
     par = "ODD"
 else:
@@ -26,16 +31,20 @@ base = bfile[2]
 b_v_base = -2.5*np.log10(bfile[4]/bfile[5])
 
 if ell==0:
-    modes = [51, 69, 78, 85, 92] #l=0 M2p5 V0
-    freqs = [1.58717,2.05922,2.49359,2.95717,3.46299] #l=0 M2p5 V0
+    modes = [51, 69, 78, 85, 92, 100, 106, 114, 122] #l=0 M2p5 V0
+    freqs = [1.58717,2.05922,2.49359,2.95717,3.46299,3.99529,4.54267,5.09092,5.64618] #l=0 M2p5 V0
     
 if ell==1:
-    modes = [5, 61] #l=1 M2p5 V0
-    freqs = [0.78296,1.6348,2.16027,2.66899,3.18255,3.70941] #l=1 M2p5 V0
+    modes = [5, 61, 81, 89, 96, 104] #l=1 M2p5 V0
+    freqs = [0.78296,1.63480,2.16027,2.66899,3.18255,3.70941] #l=1 M2p5 V0
     
 if ell==2:
-    modes = [8,34,52,66,76,84,90] #l=2 M2p5 V0
-    freqs = [0.83464,1.17430,1.60199,1.94807,2.36756,2.86427,3.38705,3.92415]
+    modes = [8, 34, 52, 66, 76, 84, 90, 97, 105, 113] #l=2 M2p5 V0
+    freqs = [0.83464,1.17430,1.60199,1.94807,2.36756,2.86427,3.38705,3.92415,4.47259,5.01979]
+    
+if ell==3:
+    modes = [34, 52, 64, 78, 87, 94, 102]
+    freqs = [1.08830,1.42856,1.68216,2.06952,2.54134,3.04737,3.57597] #l=3 M2p5 V=0
 
 if ell==4:
     modes = [12,26,40,49,61,72,80,88]
@@ -58,15 +67,17 @@ for i in range(len(modes)):
     c = colors[ell/2]
     lstyle = "-"
     if par == "ODD":
-        c = colors[ell-1]
+        c = colors[-ell]
         lstyle = "--"
         
     b_v = -2.5*np.log10(mag[i][4]/mag[i][5])
-    #plot1 = plt.vlines(freqs[i], 0, np.abs(mag[i][2]-base)/base,color=c,linestyle=lstyle)
-    plot4 = plt.vlines(freqs[i], 0, (b_v-b_v_base)/b_v_base,color=c,linestyle=lstyle)
+    plot5 = plt.vlines(freqs[i], 0, np.abs(mag[i][2]-base)/base,color=c,linestyle=lstyle)
+
+    #plot4 = plt.vlines(freqs[i], 0, (b_v-b_v_base)/b_v_base,color=c,linestyle=lstyle)
     
 #plt.legend([plot1,plot2,plot3],["$\ell = 0$","$\ell = 2$","$\ell = 4$"],loc="best")
 #plt.ylim(0,1.5)
+plt.xlim(1,4)
 plt.title("Mode luminosities M=2.5 V=0")
 plt.ylabel("Normalized L")
 plt.xlabel("Frequency")
