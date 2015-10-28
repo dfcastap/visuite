@@ -9,6 +9,10 @@ import numpy as np
 
 import pylab as plt
 
+import scipy.misc as dtv
+
+from scipy.special import sph_harm
+
 #import pandas as pd
 
 #import scipy.interpolate as interp
@@ -22,6 +26,12 @@ modefname="MODE_temp_18"
 norm_f = True
 scale = 0.1
 depth = 10 #radial zones down from the surface
+l = 3
+
+def sphm(theta):
+    global l
+    tmp = sph_harm(0, l, 0, theta).real
+    return (tmp/np.max(tmp))
 
 def calcdeldotxi(par,model,vel,modeloc,modefname):
     G = 6.67259e-8
@@ -197,27 +207,57 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
         # Calculation of deldotxi:
         deldotxi10[:,i] = (1./(-1.*VS[:,i]))*(dP[:,i]+dPhi[:,i]+xi_dot_g)
         
-        
+    """ 
+    #EQUATION 13 CALCULATIONS TO COMPARE WITH xi_t
     ####### eq 13:
-    global xi_t_e13
+    global xi_t_e13,sph_vals,dsph
     xi_t_e13 = np.empty(xi_t.shape)
     
     
     for i in range(len(ZR[:,0])):
         data1 = dP[i,:]
         container1 = pyL.legendre(data1,8)
+        if par=="ODD":
+            container1 = pyL.legendre_odd(data1,8)
         
-        df = (container1[1:-1,1]-container1[0:-2,1])/(container1[1:-1,0]-container1[0:-2,0])
-        f_df = (np.interp(nro_ang,container1[0:-2,0],df))
+        #plt.plot(container1[:,1])
+        dtp1 = np.deg2rad(container1[1:-1,0])
+        dtp0 = np.deg2rad(container1[0:-2,0])
+        df = (container1[1:-1,1]-container1[0:-2,1])/(dtp1-dtp0)
+        f_df = np.interp(np.deg2rad(nro_ang),np.deg2rad(container1[0:-2,0]),df)
         
-        xi_t_e13[i,:] = (1./sigma**2)*(f_df/ZR[i,:])
+        xi_t_e13[i,:] = (1./sigma**2)*(f_df/RS[i,:])
+        #xi_t_e13[i,:] = f_df
+        
+        
+    #plt.plot(xi_t_e13[-1,:]/np.max(xi_t_e13[-1,:]))
 
-    deldotxi10_e13 = np.empty((len(nro_out[0][:,0]),len(nro_ang)))        
+    deldotxi10_e13 = np.empty((len(nro_out[0][:,0]),len(nro_ang)))
+    
+    sph_vals = np.empty(nro_ang.shape)
+    #for i in range(len(nro_ang)):
+        #sph_vals[i] = pyL.newLeg(3,np.cos(np.deg2rad(nro_ang[i])))
+    sph_vals = sphm(np.deg2rad(nro_ang))
+    
+    data1 = sph_vals
+    container1 = pyL.legendre(data1,8)
+    if par=="ODD":
+        container1 = pyL.legendre_odd(data1,8)
+    
+    
+    dtp1 = np.deg2rad(container1[1:-1,0])
+    dtp0 = np.deg2rad(container1[0:-2,0])
+    df = (container1[1:-1,1]-container1[0:-2,1])/(dtp1-dtp0)
+    dsph = np.interp(np.deg2rad(nro_ang),np.deg2rad(container1[0:-2,0]),df)
+    #plt.plot(dsph/np.max(dsph))
+    
+    
     for i in range(len(nro_ang)):
         # Calculation of xi dot g to be used in eq 10
         xi_dot_g_e13 = xi_r[:,i]*GR[:,i]+xi_t_e13[:,i]*GT[:,i]
         # Calculation of deldotxi:
         deldotxi10_e13[:,i] = (1./(-1.*VS[:,i]))*(dP[:,i]+dPhi[:,i]+xi_dot_g_e13)
+    """
     """
     ############### calculate DEL-DOT-XI with EQ 14 (clement98)
     deldotxi14 = np.empty((len(nro_out[0][:,0]),len(nro_ang)))
@@ -347,10 +387,10 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
         
     #dt_t = -(g3m1_pulset)*deldotxi10
     dt_t = -(g3m1)*deldotxi10
-    dt_t_e13 = -(g3m1)*deldotxi10_e13
+    #dt_t_e13 = -(g3m1)*deldotxi10_e13
     
     print dt_t[-1,:]
-    print dt_t_e13[-1,:]
+    #print dt_t_e13[-1,:]
     
     return xi_r,xi_t,dt_t,dPhi*PIGR/Rsun,RS,dP,sigma
 
@@ -431,9 +471,9 @@ sns.set(style="white",rc={"figure.figsize": (8, 8),'axes.labelsize': 16,
                               'ytick.labelsize': 12,'xtick.labelsize': 12,
                               'legend.fontsize': 16,'axes.titlesize':18})  
                               
-mode = "MODE15"
-#r,xi_r,xi_t,dt_t,r = calcdeldotxi(par,model,vel,"_",modefname)
-xi_r,xi_t,dt_t,zg,r,zp,sigma = calcdeldotxi("ODD",["2p5"],0,"",mode)
+#mode = "MODE15"
+
+#xi_r,xi_t,dt_t,zg,r,zp,sigma = calcdeldotxi("ODD",["2p5"],0,"",mode)
 """
 f = open("M2p5_V0_"+mode+"_perturbations","w")  
 f.write("M2p5, V=0, "+ mode+" sigma = "+str(sigma)+"\n")
