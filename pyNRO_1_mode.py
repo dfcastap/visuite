@@ -43,7 +43,7 @@ def run_nro(tfreq,folder,model,vel,par,nmode):
     os.chdir(folder)
     dmod = glob.glob("Dmod_"+model+"M_V"+vel)[0]
     print dmod
-    steps = [1.2e-4,5e-5,8e-5,1e-4,1.3e-4]
+    steps = [1.23e-4,5.3e-5,8e-5,1e-4,1.3e-4]
     step = steps[0]
     #if ifreq==0:
     #    ifreq = np.round(float(subprocess.check_output(['tail','-1','NRO_pts']).strip("\n").split("  ")[0]) - 1.5*step,5)
@@ -77,6 +77,7 @@ def run_nro(tfreq,folder,model,vel,par,nmode):
             print child.after
             child.expect("Frequency: ")
             freq = np.float(child.readline())
+            print "f = ",freq
             #freqs.append(freq)
             
             if np.round(freq,4) == np.round(tfreq,4): 

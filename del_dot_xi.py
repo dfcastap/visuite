@@ -42,7 +42,7 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     SPIGR = np.sqrt(PIGR)
     freq_unit = np.sqrt(4.*np.pi*G)
     
-    global folder, rotorc_f,g3m1,ZT
+    global folder, rotorc_f,g3m1,ZT,ZP
     #--------------------------
     #M1p875
     m1vels = ["0","35","62","83","105","125","146","165","187","207"]
@@ -111,6 +111,10 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
         ZP[:,i] = nro_out[i][:,2]
         ZG[:,i] = nro_out[i][:,3]
         r[:,i] = nro_out[i][:,4]
+    
+    global zpcito, zgcito
+    zpcito = 1.*ZP
+    zgcito = 1.*ZG
     
     # read model properties:
     RS_read = np.genfromtxt(folder+"RS_Dmod_"+model[0]+"M_V"+vels[vel])
@@ -187,19 +191,27 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     
     dP = 1.*ZP
     
+    
+    xi_r /= RS
+    xi_t /= RS
+    dPhi /= RS
+    dP /= RS
+    
     if par=="ODD":
         print "Odd mode..."
-        xi_r = np.transpose([ZR[:,i]*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
+        rstar = RS[-1,-1]
+        xi_r = rstar*np.transpose([ZR[:,i]*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
         
-        xi_t = np.transpose([(ZT[:,i] - ZP[:,i]/(sigma*np.cos(np.deg2rad(nro_ang[i])))**2)*np.sin(np.deg2rad(nro_ang[i]))*np.cos(np.deg2rad(nro_ang[i]))**2 for i in range(len(nro_ang))])
-        
-        xi_t = RS*np.transpose([(np.sin(np.deg2rad(nro_ang[i]))*np.cos(np.deg2rad(nro_ang[i]))**2) * ZT[:,i] - np.sin(np.deg2rad(nro_ang[i]))*ZP[:,i]/(sigma**2) for i in range(len(nro_ang))])
+        #xi_t = np.transpose([(ZT[:,i] - ZP[:,i]/(sigma*np.cos(np.deg2rad(nro_ang[i])))**2)*np.sin(np.deg2rad(nro_ang[i]))*np.cos(np.deg2rad(nro_ang[i]))**2 for i in range(len(nro_ang))])
+        xi_t = np.transpose([(np.sin(np.deg2rad(nro_ang[i]))*(np.cos(np.deg2rad(nro_ang[i]))**2)) * ZT[:,i] * rstar - np.sin(np.deg2rad(nro_ang[i]))*(ZP[:,i]*RS[:,i]*rstar)/(sigma**2) for i in range(len(nro_ang))])
         #xi_t = np.transpose([ZT[:,i]*((np.sin(np.deg2rad(nro_ang[i]))**2))*RS[:,i] + (ZP[:,i]/(sigma**2))*(RS[:,i]*np.sin(np.deg2rad(nro_ang[i]))-1./(np.cos(np.deg2rad(nro_ang[i]))**2)) for i in range(len(nro_ang))])
         
         
-        dPhi = np.transpose([ZG[:,i]*RS[:,i]*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
+        dPhi = np.transpose([ZG[:,i]*RS[:,i]*rstar*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
+        #dPhi = ZG*RS
         
-        dP = np.transpose([ZP[:,i]*RS[:,i]*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
+        dP = np.transpose([ZP[:,i]*RS[:,i]*rstar*np.cos(np.deg2rad(nro_ang[i])) for i in range(len(nro_ang))])
+        #dP = ZP*RS
     
     for i in range(len(nro_ang)):
         # Calculation of xi dot g to be used in eq 10
@@ -207,7 +219,7 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
         # Calculation of deldotxi:
         deldotxi10[:,i] = (1./(-1.*VS[:,i]))*(dP[:,i]+dPhi[:,i]+xi_dot_g)
         
-    """ 
+    """
     #EQUATION 13 CALCULATIONS TO COMPARE WITH xi_t
     ####### eq 13:
     global xi_t_e13,sph_vals,dsph
@@ -230,7 +242,7 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
         #xi_t_e13[i,:] = f_df
         
         
-    #plt.plot(xi_t_e13[-1,:]/np.max(xi_t_e13[-1,:]))
+    plt.plot(xi_t_e13[-1,:]/np.max(xi_t_e13[-1,:]))
 
     deldotxi10_e13 = np.empty((len(nro_out[0][:,0]),len(nro_ang)))
     
@@ -249,7 +261,7 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     dtp0 = np.deg2rad(container1[0:-2,0])
     df = (container1[1:-1,1]-container1[0:-2,1])/(dtp1-dtp0)
     dsph = np.interp(np.deg2rad(nro_ang),np.deg2rad(container1[0:-2,0]),df)
-    #plt.plot(dsph/np.max(dsph))
+    plt.plot(dsph/np.max(dsph))
     
     
     for i in range(len(nro_ang)):
@@ -257,11 +269,13 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
         xi_dot_g_e13 = xi_r[:,i]*GR[:,i]+xi_t_e13[:,i]*GT[:,i]
         # Calculation of deldotxi:
         deldotxi10_e13[:,i] = (1./(-1.*VS[:,i]))*(dP[:,i]+dPhi[:,i]+xi_dot_g_e13)
+    
     """
     """
     ############### calculate DEL-DOT-XI with EQ 14 (clement98)
+    import pyLegendre_anybf as pyL
     deldotxi14 = np.empty((len(nro_out[0][:,0]),len(nro_ang)))
-    
+    deldotxi142 = np.empty((len(nro_out[0][:,0])-2,len(nro_ang)))
     
     #dxi_t = np.zeros(RS.shape)
     
@@ -271,11 +285,39 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     dxi_tsint = np.zeros(RS.shape)
     #### The next block is a very generic script I took from the NRO_viewer to get the legendre function
     #### from a set of points. In this case I use xi_t :------------------------------------------------
+    global fine_ZT,fine_ZP,fine_ang,fine_ang_mid,fine_RS,fine_xi_t,d_fine_xi_t
     for i in range(len(ZR[:,0])):
         # For sticking with the generic code I rename some variables:
-        data1 = xi_tsint[-1,:]
+        data1 = xi_tsint[i,:]
+        container1 = pyL.legendre(data1,8)
         # container1 will hold the theta values and the legendre polynomial values every 0.9 degrees
-        container1 = pyL.legendre(data1,8) 
+        
+        if par=="EVEN":
+            container1 = pyL.legendre(data1,8)
+            fine_ZT = pyL.legendre(ZT[i,:],8)
+            fine_ZP = pyL.legendre(ZP[i,:],8)
+            fine_RS = pyL.legendre(RS[i,:],8)
+        else:
+            container1 = pyL.legendre_odd(data1,8)
+            fine_ZT = pyL.legendre(ZT[i,:],8)
+            fine_ZP = pyL.legendre(ZP[i,:],8)
+            fine_RS = pyL.legendre(RS[i,:],8)
+            
+        
+        fine_ang = np.deg2rad(fine_ZT[:,0])
+        fine_ang_mid = 0.5*(fine_ang[0:-2]+fine_ang[1:-1])
+        
+        if par=="EVEN":
+            fine_xi_t = np.array([fine_ZT[j,1]*fine_RS[j,1]*np.sin(fine_ang[j])*np.cos(fine_ang[j]) for j in range(len(fine_ang))])
+        else:
+            fine_xi_t = np.array([((np.sin(fine_ang[j])**2)*(np.cos(fine_ang[j])**2)) * fine_ZT[j,1] * rstar - (np.sin(fine_ang[j])**2)*(fine_ZP[j,1]*fine_RS[j,1]*rstar)/(sigma**2) for j in range(len(fine_ang))])
+            
+        d_fine_xi_t = (fine_xi_t[1:-1] - fine_xi_t[0:-2])/(fine_ang[1:-1] - fine_ang[0:-2])
+        d_fine_xi_t = np.interp(np.deg2rad(nro_ang),fine_ang_mid,d_fine_xi_t)
+        
+        #if i == len(ZR[:,0]) - 1 :
+            #plt.plot(np.rad2deg(fine_ang),fine_ZT[:,1])
+            #plt.plot(nro_ang,ZT[i,:],"o")
         
         df = (container1[1:-1,1]-container1[0:-2,1])/(container1[1:-1,0]-container1[0:-2,0])
         f_df = (np.interp(nro_ang,container1[0:-2,0],df))
@@ -291,14 +333,14 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
         
         # Store the values on a matrix with a name that makes more sense
         #dxi_tsint[i,:]=df[:]
-        dxi_tsint[i,:]=f_df
+        #dxi_tsint[i,:]=f_df
+        dxi_tsint[i,:]=d_fine_xi_t
     ############################################################--------------------------------
-    
     
     
     # Also initialize the container of the derivative of r^2*xi_r:
     dr2xi_r = np.zeros(xi_r.shape)
-    
+    dr2xi_r2 = np.zeros(deldotxi142.shape)
     
     #### Similar code to calculate the derivative to the one used for xi_t on line 141
     #### This thime there's no need to find a Legendre solution.
@@ -320,30 +362,60 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
         # Store the derivatives
         #dr2xi_r[:,i]=df[:]
         dr2xi_r[:,i]=f_df
+        dr2xi_r2[:,i]=df
     ############################################################--------------------------------
-    
     # The r-component of EQ14 can be calculated now:
-    r_comp2 = (1./RS[:,:]**2)*(dr2xi_r[:,:])
+    RS_mid = 0.5*(RS[1:-1,:] + RS[0:-2,:])
+    r_comp = (1./RS[:,:]**2)*(dr2xi_r[:,:])
+    r_comp2 = (1./RS_mid**2)*(dr2xi_r2[:,:])
+            
     
+    global t_comp,t_comp2
     # The theta-component calculation follows:
     for i in range(len(nro_ang)):
-        theta = np.deg2rad(nro_ang[i])    
-        t_comp = (1./(RS[:,i]*np.sin(theta)))*(dxi_tsint[:,i])    
-        
+        theta = np.deg2rad(nro_ang[i])
+        if par == "EVEN":
+            t_comp = (1./(RS[:,i]*np.sin(theta)))*(dxi_tsint[:,i])    
+        else:
+            t_comp = (1./(np.sin(theta)))*(dxi_tsint[:,i])
+            
+        t_comp2 = 0.5*(t_comp[1:-1] + t_comp[0:-2])
         # Final calculation of deldotxi for EQ14:    
-        deldotxi14[:,i]= r_comp2[:,i]+t_comp
+        deldotxi14[:,i]= r_comp[:,i]+t_comp
+        deldotxi142[:,i]= r_comp2[:,i]+t_comp2
+
         
     
     #np.savetxt(modefname+"_deldotxi_eq10",deldotxi10)
     #np.savetxt(modefname+"_deldotxi_eq14",deldotxi14)
-    plt.plot(RS[:,-1],deldotxi10[:,-1],label="$\nabla\cdot xi$ Eq. 10")
-    plt.plot(RS[:,-1],deldotxi14[:,-1],label="$\nabla\cdot xi$ Eq. 14")
-    plt.legend(loc="best")
-    plt.grid()
-    plt.xlim(1,2)
-    plt.xlabel("R [R$_{\odot}$]")
-    plt.ylabel("$\nabla\cdot xi$")
-    plt.title("$\nabla\cdot xi$ - "+modefname)
+    
+    for i in range(len(nro_ang)):
+        pl1, = plt.plot(RS[:,i],deldotxi10[:,i],"b",label=r"$\nabla\cdot xi$ Eq. 10")
+        pl2, = plt.plot(RS[:,i],deldotxi14[:,i],"r",label=r"$\nabla\cdot xi$ Eq. 14")
+        plt.legend([pl1,pl2],[r"$\nabla\cdot xi$ Eq. 10",r"$\nabla\cdot xi$ Eq. 14"],loc="best")
+        plt.grid(b='on')
+        plt.xlim(0,2)
+        plt.xlabel(r"R [R$_{\odot}$]")
+        plt.ylabel(r"$\nabla\cdot xi$")
+        plt.title(r"$\theta=$"+str((i+1)*10))
+        #plt.savefig("ddotxi_ang_"+str(i))
+        plt.clf()
+    
+    
+    for i in range(len(nro_ang)):
+        pl1, = plt.plot(RS[:,i],deldotxi10[:,i],"b",label=r"$\nabla\cdot xi$ Eq. 10")
+        pl2, = plt.plot(RS[:,i],deldotxi14[:,i],"r",label=r"$\nabla\cdot xi$ Eq. 14")
+        #pl2, = plt.plot(RS[:,i],deldotxi14[:,i],"purple",label="Interp R")
+    
+
+    plt.legend([pl1,pl2],[r"$\nabla\cdot xi$ Eq. 10",r"$\nabla\cdot xi$ Eq. 14"],loc="best")
+    plt.grid(b='on')
+    plt.xlim(0,2)
+    plt.xlabel(r"R [R$_{\odot}$]")
+    plt.ylabel(r"$\nabla\cdot xi$")
+    plt.title("All angles")
+    #plt.savefig("ddotxi_allang")
+
     """
     
     """
@@ -392,12 +464,12 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     print dt_t[-1,:]
     #print dt_t_e13[-1,:]
     
-    return xi_r,xi_t,dt_t,dPhi*PIGR/Rsun,RS,dP,sigma
+    return xi_r,xi_t,dt_t,dPhi*PIGR/Rsun,RS,dP,sigma,VS
 
 def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth,reese,sig):
     global folder, rotorc_f
     
-    t_reese = 0.01/sig
+    t_reese = scale/(sig**2)
     xi_r_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     xi_t_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     dt_t_n = np.empty(xi_r[-(depth+1):-1,:].shape)
@@ -420,19 +492,22 @@ def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth,reese,sig):
         xi_t_n = xi_t * scale
         dt_t_n = dt_t * scale
         ZG_n = ZG * scale
-        
+    
+    tmp=np.max(np.abs(xi_r[:,:]))
     if reese:
+        """
         for i in np.arange(-(depth),0,1):
             i_max=np.argmax(np.abs(xi_r[i,:]))
             xi_r_n[i,:] =  xi_r[i,:]/xi_r[i,i_max]
             xi_t_n[i,:] =  xi_t[i,:]/xi_r[i,i_max]
             dt_t_n[i,:] =  dt_t[i,:]/xi_r[i,i_max]
             ZG_n[i,:] =  ZG[i,:]/xi_r[i,i_max]
-            
-        xi_r_n *= t_reese
-        xi_t_n *= t_reese
-        dt_t_n *= t_reese
-        ZG_n *= t_reese
+        """
+        
+        xi_r_n = xi_r[-(depth+1):-1,:]*t_reese*(1./tmp)
+        xi_t_n = xi_t[-(depth+1):-1,:]*t_reese*(1./tmp)
+        dt_t_n = dt_t[-(depth+1):-1,:]*t_reese*(1./tmp)
+        ZG_n = ZG[-(depth+1):-1,:]*t_reese*(1./tmp)
         print "Reese normalization: "+str(t_reese)
         
         
@@ -464,27 +539,31 @@ def to_rotorc(xi_r_n,xi_t_n,dt_t_n,ZG_n):
     return xi_r_rot,xi_t_rot,dt_t_rot,ZG_rot
     
 
-
+"""
 import pyLegendre_anybf as pyL
 import seaborn as sns
 sns.set(style="white",rc={"figure.figsize": (8, 8),'axes.labelsize': 16,
                               'ytick.labelsize': 12,'xtick.labelsize': 12,
                               'legend.fontsize': 16,'axes.titlesize':18})  
-                              
-#mode = "MODE15"
 
-#xi_r,xi_t,dt_t,zg,r,zp,sigma = calcdeldotxi("ODD",["2p5"],0,"",mode)
+
+mode = "MODE14"
+
+#xi_r,xi_t,dt_t,zg,r,zp,sigma = calcdeldotxi("EVEN",["2p5"],0,"",mode)
+xi_r,xi_t,dt_t,dPhi,RS,dP,sigma,VS = calcdeldotxi("ODD",["2p5"],0,"",mode)
 """
-f = open("M2p5_V0_"+mode+"_perturbations","w")  
-f.write("M2p5, V=0, "+ mode+" sigma = "+str(sigma)+"\n")
-f.write("n_angle, r, xi_r, xi_t, dT/T\n")
-for i in range(len(r[:,0])-10,len(r[:,0])):
-    for j in range(len(xi_r[-1,:])):
+
+#f = open("M2p5_V0_"+mode+"_perturbations","w")
+#f.write("M2p5, V=0, "+ mode+" sigma = "+str(sigma)+"\n")
+#f.write("n_angle, r, xi_r, xi_t, dT/T\n")
+#for i in range(len(r[:,0])-10,len(r[:,0])):
+#    for j in range(len(xi_r[-1,:])):
         #print "%i %8.5f %8.5f %8.5f %8.5f\n"%(j+1,r[i,j],xi_r[i,j],xi_t[i,j],dt_t[i,j])
-        f.write("%i %8.5f %8.5f %8.5f %8.5f\n"%(j+1,r[i,j],xi_r[i,j],xi_t[i,j],dt_t[i,j])) 
-        
-f.close()
-"""
+        #f.write("%i %8.5f %8.5f %8.5f %8.5f\n"%(j+1,r[i,j],xi_r[i,j],xi_t[i,j],dt_t[i,j]))
+
+#f.close()
+
+
 #xi_r_n,xi_t_n,dt_t_n = norm_and_scale(xi_r,xi_t,dt_t,norm_f,scale,depth)
 
 #xi_r_rot,xi_t_rot,dt_t_rot = to_rotorc(xi_r_n,xi_t_n,dt_t_n)

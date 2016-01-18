@@ -11,11 +11,13 @@ import glob
 import seaborn as sns
 sns.set(style="white",rc={"figure.figsize": (8, 8),'axes.labelsize': 16,
                               'ytick.labelsize': 12,'xtick.labelsize': 12,
-                              'legend.fontsize': 16,'axes.titlesize':18})
-                              
+                              'legend.fontsize': 16,'axes.titlesize':18,'font.size':14})
+wavebands = [3650.,4450.,5510.,6580.,8060.]
 
-ell = 1
-colors = ["red","blue","green","magenta"]
+wal_wave = [3250,3630,3840,4320,5470]                        
+
+ell = 6
+colors = ["red","blue","green","magenta","purple"]
 if ell%2==1:
     par = "ODD"
 else:
@@ -26,7 +28,7 @@ loc = "/home/diego/Documents/ROTORCmodels/visibilities/2p5Msun/V0"
 locbase = "/home/diego/Documents/ROTORCmodels/visibilities/2p5Msun/"
 #fmag = glob.glob(loc+"/MODE_EVEN_"+str(51)+"/magnitudes*")
 
-bfile = np.genfromtxt(locbase+"2p5Msun_V0_magnitudes_static")
+bfile = np.genfromtxt(locbase+"mags_walraven_2p5Msun_V0_static")
 base = bfile[2]
 b_v_base = -2.5*np.log10(bfile[4]/bfile[5])
 
@@ -54,31 +56,83 @@ if ell==6:
     modes = [67,75,83,91]
     freqs = [1.97688,2.25056,2.82636,3.39865]
 
+modes = [67]
 mag = []
 b_v = []
 for i in modes:
-    fmag = glob.glob(loc+"/MODE_"+par+"_"+str(i)+"/magnitudes*")
-    print fmag
+    fmag = glob.glob(loc+"/MODE_"+par+"_"+str(i)+"/walraven_magnitudes_MODE_"+str(i))
+    #print fmag
     mag.append(np.genfromtxt(fmag[0]))
 
-for i in range(len(modes)):
-    #plt.plot([freqs[i],0],[freqs[i],mag[i][0,2]/base])
-    #plt.plot([[freqs[i],0],[freqs[i],1]])
-    c = colors[ell/2]
-    lstyle = "-"
-    if par == "ODD":
-        c = colors[-ell]
-        lstyle = "--"
-        
-    b_v = -2.5*np.log10(mag[i][4]/mag[i][5])
-    plot5 = plt.vlines(freqs[i], 0, np.abs(mag[i][2]-base)/base,color=c,linestyle=lstyle)
+def plot_amplitude_ratios():
+    global ell,modes,colors,bfile,base,par
+    for i in range(len(modes)):
+        #plt.plot([freqs[i],0],[freqs[i],mag[i][0,2]/base])
+        #plt.plot([[freqs[i],0],[freqs[i],1]])
+        c = colors[ell/2]
+        lstyle = "-"
+        if par == "ODD":
+            c = colors[-ell]
+            lstyle = "--"
+            
+        #b_v = -2.5*np.log10(mag[i][4]/mag[i][5])
+        #plot5 = plt.vlines(freqs[i], 0, np.abs(mag[i][2]-base)/base,color=c,linestyle=lstyle)
+        #print mag[i][2]
+        #plot4 = plt.vlines(freqs[i], 0, (b_v-b_v_base)/b_v_base,color=c,linestyle=lstyle)
+        #mag_ratios = mag[i][3:]/mag[i][3]
+        mag_ratios = mag[i][3:]/bfile[3:]
+        mag_ratios /= mag_ratios[0]
+        plt.plot(wavebands,mag_ratios)
+        plt.text(wavebands[-1]+140,mag_ratios[-1],r"$\ell$ = "+str(ell) + " - "+ str(i))
+        plt.xlabel("Wavelength")
+        plt.ylabel("Apmplitude ratio")
 
-    #plot4 = plt.vlines(freqs[i], 0, (b_v-b_v_base)/b_v_base,color=c,linestyle=lstyle)
-    
+def plot_amplitude_ratios():
+    global ell,modes,colors,bfile,base,par,mag
+    for i in range(len(modes)):
+        #plt.plot([freqs[i],0],[freqs[i],mag[i][0,2]/base])
+        #plt.plot([[freqs[i],0],[freqs[i],1]])
+        c = colors[ell/2]
+        lstyle = "-"
+        if par == "ODD":
+            c = colors[-ell]
+            lstyle = "--"
+            
+        #b_v = -2.5*np.log10(mag[i][4]/mag[i][5])
+        #plot5 = plt.vlines(freqs[i], 0, np.abs(mag[i][2]-base)/base,color=c,linestyle=lstyle)
+        print mag[i][2]
+        #plot4 = plt.vlines(freqs[i], 0, (b_v-b_v_base)/b_v_base,color=c,linestyle=lstyle)
+        #mag_ratios = mag[i][3:]/mag[i][3]
+        mag_ratios = mag[i][3:]/bfile[3:]
+        mag_ratios /= mag_ratios[0]
+        plt.plot(wavebands,mag_ratios)
+        plt.text(wavebands[-1]+140,mag_ratios[-1],r"$\ell$ = "+str(ell) + " - "+ str(i))
+        plt.xlabel("Wavelength")
+        plt.ylabel("Apmplitude ratio")
+
+#plot_amplitude_ratios()
+
+def lum_plot():
+    global ell,modes,colors,bfile,base,par,mag
+    for i in range(len(modes)):
+        #plt.plot([freqs[i],0],[freqs[i],mag[i][0,2]/base])
+        #plt.plot([[freqs[i],0],[freqs[i],1]])
+        c = colors[ell/2]
+        lstyle = "-"
+        if par == "ODD":
+            c = colors[-ell]
+            lstyle = "--"
+            
+        #b_v = -2.5*np.log10(mag[i][4]/mag[i][5])
+        #plot5 = plt.vlines(freqs[i], 0, np.abs(mag[i][2]-base)/base,color=c,linestyle=lstyle)
+        #print mag[i][2]
+        plt.vlines(ell, 0, (mag[i][2]-base)/base,color=c,linestyle=lstyle)
+        
+lum_plot()
 #plt.legend([plot1,plot2,plot3],["$\ell = 0$","$\ell = 2$","$\ell = 4$"],loc="best")
 #plt.ylim(0,1.5)
-plt.xlim(1,4)
-plt.title("Mode luminosities M=2.5 V=0")
-plt.ylabel("Normalized L")
-plt.xlabel("Frequency")
+#plt.xlim(1,4)
+#plt.title("Mode luminosities M=2.5 V=0")
+#plt.ylabel("Normalized L")
+#plt.xlabel("Frequency")
 plt.show()

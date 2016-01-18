@@ -76,7 +76,7 @@ def find_name(model,vel,par,mode):
             
     return temp_modes[mode-1]
 
-def run_visc_pert(model,vel,mode,par,sigma,reese):
+def run_visc_pert(model,vel,mode,par,sigma,reese,force_f):
     # Info for del dot xi calculation:------------------
     # NRO Mode filename:
     #modefname="MODE1"
@@ -85,7 +85,7 @@ def run_visc_pert(model,vel,mode,par,sigma,reese):
     depth = 10 #radial zones down from the surface
     #---------------------------------------------------
     
-    clic_run = True
+    #clic_run = True
     
     
     v = find_vel(model,vel)
@@ -121,8 +121,13 @@ def run_visc_pert(model,vel,mode,par,sigma,reese):
     
     temp_freqs = np.genfromtxt(folder+"temp_freqs")
     tfreq = temp_freqs[mode-1]
+    if force_f==True:
+        tfreq = sigma
+        print sigma
     #tfreq = 1.59692
-    print pyNRO.run_nro(tfreq,folder,model[0],v,par,mode)
+    #print pyNRO.run_nro(tfreq,folder,model[0],v,par,mode)
+    
+    pyNRO.run_nro(tfreq,folder,model[0],v,par,mode)
     
     if not os.path.exists(static_m+model[0]+'Msun/'+'V'+v):
         os.makedirs(static_m+model[0]+'Msun/'+'V'+v)
@@ -146,10 +151,10 @@ def run_visc_pert(model,vel,mode,par,sigma,reese):
     s_model = np.genfromtxt(glob.glob(static_m+model[0]+'Msun/'+model[0]+'Msun_V'+v+"*")[0])
     
     global xi_r_rot,xi_t_rot,dt_t_rot,zg_rot    
-    global xi_r,xi_t,dt_t,zg,r,zp
+    global xi_r,xi_t,dt_t,zg,r,zp,cs
     global xi_r_n,xi_t_n,dt_t_n,zg_n
     
-    xi_r,xi_t,dt_t,zg,r,zp,sig = ddxi.calcdeldotxi(par,model,vel,modeloc,modefname)
+    xi_r,xi_t,dt_t,zg,r,zp,sig,cs = ddxi.calcdeldotxi(par,model,vel,modeloc,modefname)
             
     xi_r_n,xi_t_n,dt_t_n,zg_n = ddxi.norm_and_scale(xi_r,xi_t,dt_t,zg,norm_f,scale,depth,reese,sig)
 
@@ -199,25 +204,47 @@ def run_visc_pert(model,vel,mode,par,sigma,reese):
     
     return modeloc,pmodels
     
-def make_contour(r,var,model,vel,par,mode):
+def make_contour(r,var,model,vel,par,mode,x):
+    global new_r,new_zp
     import seaborn as sns
     sns.set(style="white",rc={"figure.figsize": (8, 8),'axes.labelsize': 16,
                               'ytick.labelsize': 12,'xtick.labelsize': 12,'axes.titlesize':18})
-    new_r = lint.leg_interp(r,8,"EVEN")
-    new_zp = lint.leg_interp(var,8,"EVEN")
-    #levels = np.linspace(np.min(new_zp),np.max(new_zp), 40)
-    theta = np.linspace(0,np.deg2rad(90),100)
-    newt,n_r = np.meshgrid(theta,new_r[:,0])
-    
 
-    CS = plt.contourf((new_r*np.sin(newt)),(new_r*np.cos(newt)),new_zp, 100, cmap=plt.cm.jet,vmax=np.max(new_zp), vmin=np.min(new_zp))
-    CSl = plt.contour((new_r*np.sin(newt)),(new_r*np.cos(newt)),new_zp, 20, colors="k")
+    t_var = np.empty(var[x::,:].shape)
+    t_r = np.empty(t_var.shape)
+    for i in range(len(r[0,:])):
+        t_var[:,i] = var[x::,i]
+        t_r[:,i] = np.linspace(r[0,i],r[-1,i],len(t_var[:,i]))
+        
+    var = 1.*t_var
+    r = 1.*t_r
+    
+    new_r = lint.leg_interp(r[0:-2,:],8,"EVEN")
+    new_zp = lint.leg_interp(var[0:-2,:],8,"EVEN")
+    #levels = np.linspace(np.min(new_zp),np.max(new_zp), 40)
+    
+    #####REMOVE 0-10deg at the pole:    
+    new_r = new_r[:,11::]
+    new_zp = new_zp[:,11::]
+    theta = np.linspace(0,np.deg2rad(90),89)
+    #########################################
+    
+    #theta = np.linspace(0,np.deg2rad(90),100)
+    newt,n_r = np.meshgrid(theta,new_r[:,0])
+
+    
+    plt.contourf((new_r*np.sin(newt)),(new_r*np.cos(newt)),new_zp, 100, cmap=plt.cm.gnuplot,vmax=np.max(new_zp), vmin=np.min(new_zp))
+    plt.contourf((new_r*np.sin(newt)),-(new_r*np.cos(newt)),new_zp, 100, cmap=plt.cm.gnuplot,vmax=np.max(new_zp), vmin=np.min(new_zp))
+    plt.contourf(-(new_r*np.sin(newt)),-(new_r*np.cos(newt)),new_zp, 100, cmap=plt.cm.gnuplot,vmax=np.max(new_zp), vmin=np.min(new_zp))
+    plt.contourf(-(new_r*np.sin(newt)),(new_r*np.cos(newt)),new_zp, 100, cmap=plt.cm.gnuplot,vmax=np.max(new_zp), vmin=np.min(new_zp))
+    #CSl = plt.contour((new_r*np.sin(newt)),(new_r*np.cos(newt)),new_zp, 20, colors="k")
     #CS = plt.contourf((new_r*np.cos(newt)), (new_r*np.sin(newt)), new_zp, cmap=plt.cm.Spectral,levels=levels)
     #plt.axes().set_aspect('equal')
     #plt.xlim(np.ceil(r[-1,-1]))
-    plt.ylim(plt.xlim())
-    plt.xlabel("Radius [R$_{\odot}$]")
-    plt.ylabel("Radius [R$_{\odot}$]")
+    plt.ylim(-plt.xlim()[1],plt.xlim()[1])
+    #plt.xlabel("Radius [R$_{\odot}$]")
+    #plt.ylabel("Radius [R$_{\odot}$]")
+    plt.axis('off')
     try:
         m = (find_name(model,vel,par,mode)).strip()
     except:
@@ -232,6 +259,7 @@ def save_pert(model,vel,par,mode,l,n):
     global xi_r,xi_t,dt_t,zg,r
     global xi_r_n,xi_t_n,dt_t_n,zg_n
     
+    print os.getcwd()
     f = open("M2p5_V0_l"+l+"_n"+n+"_perturbations","w")  
     f.write("M2p5, V=0, Mode freq = %.5f\n" % find_sigma(model,vel,par,mode))
     f.write("n_angle, r, xi_r, xi_t, dT/T\n")
@@ -254,13 +282,22 @@ par = "ODD"
 model = ["2p5"]
 vel = 0 #index, not velocity!
 modes = [61]
-mode_by_freq = True
+mode_by_freq = False
 clic = False
 new_mags = False
 save_perturbation = False
+only_mags = False
+#### contour plotting option:
+plot_contour = True
+excl = 20 #How many core zones to exclude
+####
 
-plot_contour = False
-reese = False
+
+reese = True
+force_f = False
+f_freq = 4.375
+
+
 #freqs = [1.58717,2.05922,2.49359,2.95717,3.46299,3.99529,4.54267,5.09092,5.64618] # l=0, M2p5 V=0
 #modes = [51, 69, 78, 85, 92, 100, 106, 114, 122] # l=0, M2p5 V=0
 
@@ -292,15 +329,19 @@ if mode_by_freq==True:
     
 
 for mode in modes:
-    sigma = find_sigma(model,vel,par,mode)
+    
+    if force_f==True:
+        sigma=f_freq
+    else:
+        sigma = find_sigma(model,vel,par,mode)
     #Find the perturbed models!
 
-    modeloc,pmodels = run_visc_pert(model,vel,mode,par,sigma,reese)
+    modeloc,pmodels = run_visc_pert(model,vel,mode,par,sigma,reese,force_f)
     if plot_contour == True:
-        make_contour(r,zp,model,vel,par,mode)
+        make_contour(r,-zp*cs,model,vel,par,mode,excl)
         
     if save_perturbation==True:
-        save_pert(model,vel,par,mode,"1","1")
+        save_pert(model,vel,par,mode,"3","1")
     
     for i in range(len(pmodels)):
         np.savetxt(modeloc+"model_MODE_"+str(mode)+"_r"+str(i+1),pmodels[i],'%.3f')
@@ -314,32 +355,66 @@ for mode in modes:
     if clic==True:
         #Ugly way of running pyCLIC:
         clic_folder = "/home/diego/Documents/pyCLIC/test/"
-        incl = [90.0]
+        incl = [45.0]
         rzone = 2
         
-        for i in incl:
-            subprocess.call(['cp',modeloc+"model_MODE_"+str(mode)+"_r"+str(rzone),clic_folder])
+        if only_mags==False:
+            
+            for i in incl:
+                subprocess.call(['cp',modeloc+"model_MODE_"+str(mode)+"_r"+str(rzone),clic_folder])
+                    
+                if (os.path.isfile(modeloc+"magnitudes_MODE_"+str(mode)))==False:
+                    myfile = open(modeloc+"magnitudes_MODE_"+str(mode), "w")
+                    myfile.write('#%5s %5s %9s %11s %11s %11s %11s %11s\n' % ("incl","n_r","lum","u","b","v","r","i"))
+                    myfile.close()
+                    subprocess.call(['cp',modeloc+"magnitudes_MODE_"+str(mode),clic_folder])
+                else:
+                    subprocess.call(['cp',modeloc+"magnitudes_MODE_"+str(mode),clic_folder])
+                    
+                if (os.path.isfile(modeloc+"walraven_magnitudes_MODE_"+str(mode)))==False:
+                    myfile = open(modeloc+"walraven_magnitudes_MODE_"+str(mode), "w")
+                    myfile.write('#%5s %5s %9s %11s %11s %11s %11s %11s\n' % ("incl","n_r","lum","w","u","l","b","v"))
+                    myfile.close()
+                    subprocess.call(['cp',modeloc+"walraven_magnitudes_MODE_"+str(mode),clic_folder])
+                else:
+                    subprocess.call(['cp',modeloc+"walraven_magnitudes_MODE_"+str(mode),clic_folder])
                 
-            if (os.path.isfile(modeloc+"magnitudes_MODE_"+str(mode)))==False:
-                myfile = open(modeloc+"magnitudes_MODE_"+str(mode), "w")
+                os.chdir(clic_folder)
+                import main as pyclic
+                import color_magnitudes as cmag
+                
+                pyclic.run_CLIC("model_MODE_"+str(mode)+"_r"+str(rzone),[i],False,3000.,12099.,2.0,par,dt_grid)
+                
+                cmag.calc_mags('outputflux_i'+str(i)+'.final',[i],mode,rzone)
+                cmag.calc_walraven('outputflux_i'+str(i)+'.final',[i],mode,rzone)
+                subprocess.call(['cp','outputflux_i'+str(i)+'.final',modeloc+"outputflux_i"+str(i)+"_MODE_"+str(mode)+"_r"+str(rzone)])
+                subprocess.call(['rm',"model_MODE_"+str(mode)+"_r"+str(rzone)])
+                subprocess.call(['rm','outputflux_i'+str(i)+'.final'])
+                subprocess.call(['cp',"magnitudes_MODE_"+str(mode),modeloc])
+                subprocess.call(['rm',"magnitudes_MODE_"+str(mode)])
+                subprocess.call(['cp',"walraven_magnitudes_MODE_"+str(mode),modeloc])
+                subprocess.call(['rm',"walraven_magnitudes_MODE_"+str(mode)])
+                os.chdir(vis_path)
+                
+        else:
+            os.chdir(vis_path)
+            import color_magnitudes as cmag
+            os.chdir(modeloc)
+            if (os.path.isfile("magnitudes_MODE_"+str(mode)))==False:
+                myfile = open("magnitudes_MODE_"+str(mode), "w")
                 myfile.write('#%5s %5s %9s %11s %11s %11s %11s %11s\n' % ("incl","n_r","lum","u","b","v","r","i"))
                 myfile.close()
-                subprocess.call(['cp',modeloc+"magnitudes_MODE_"+str(mode),clic_folder])
-            else:
-                subprocess.call(['cp',modeloc+"magnitudes_MODE_"+str(mode),clic_folder])
+
+                
+            if (os.path.isfile(modeloc+"walraven_magnitudes_MODE_"+str(mode)))==False:
+                myfile = open(modeloc+"walraven_magnitudes_MODE_"+str(mode), "w")
+                myfile.write('#%5s %5s %9s %11s %11s %11s %11s %11s\n' % ("incl","n_r","lum","w","u","l","b","v"))
+                myfile.close()
             
-            os.chdir(clic_folder)
-            import main as pyclic
-            import color_magnitudes as cmag
-            
-            pyclic.run_CLIC("model_MODE_"+str(mode)+"_r"+str(rzone),[i],False,3000.,12099.,2.0,par,dt_grid)
-            
-            cmag.calc_mags('outputflux_i'+str(i)+'.final',[i],mode,rzone)
-            subprocess.call(['cp','outputflux_i'+str(i)+'.final',modeloc+"outputflux_i"+str(i)+"_MODE_"+str(mode)+"_r"+str(rzone)])
-            subprocess.call(['rm',"model_MODE_"+str(mode)+"_r"+str(rzone)])
-            subprocess.call(['rm','outputflux_i'+str(i)+'.final'])
-            subprocess.call(['cp',"magnitudes_MODE_"+str(mode),modeloc])
-            subprocess.call(['rm',"magnitudes_MODE_"+str(mode)])
+            for i in incl:
+                cmag.calc_mags("outputflux_i"+str(i)+"_MODE_"+str(mode)+"_r"+str(rzone),[i],mode,rzone)
+                cmag.calc_walraven("outputflux_i"+str(i)+"_MODE_"+str(mode)+"_r"+str(rzone),[i],mode,rzone)
+
             os.chdir(vis_path)
 
 #plt.plot(xi_r_rot[-1,:],label=r"$\xi_{r}$")
