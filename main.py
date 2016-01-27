@@ -16,6 +16,12 @@ import scipy.integrate as scint
 import legendre_interp as lint
 vis_path = os.getcwd()
 
+global homedir
+if (os.path.isfile(vis_path+"/lachesis"))==False:
+    homedir = "/home/diego/Documents/"
+else:
+    homedir = "/home/castaned/"
+
 def find_vel(model,vel):
     #--------------------------
     #M1p875
@@ -41,7 +47,7 @@ def find_index(freq,model,vel,par):
     global temp_freqs
     
     v = find_vel(model,vel)
-    folder = "/home/diego/Documents/ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
+    folder = homedir+"ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
     temp_freqs = np.genfromtxt(folder+"temp_freqs")
     temp_freqs[:] *= 1e5
     temp_freqs = ((np.array(temp_freqs)).astype(int)).tolist()
@@ -57,7 +63,7 @@ def find_index(freq,model,vel,par):
 def find_sigma(model,vel,par,mode):
     global temp_freqs
     v = find_vel(model,vel)
-    folder = "/home/diego/Documents/ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
+    folder = homedir+"ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
     temp_freqs = np.genfromtxt(folder+"temp_freqs")
             
     return temp_freqs[mode-1]
@@ -65,7 +71,7 @@ def find_sigma(model,vel,par,mode):
 def find_name(model,vel,par,mode):
     global temp_modes
     v = find_vel(model,vel)
-    folder = "/home/diego/Documents/ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
+    folder = homedir+"ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
     temp_modes = np.genfromtxt(folder+"temp_MODES")
     try:
         temp_modes = np.genfromtxt(folder+"temp_MODES",dtype='|S8',delimiter=8)
@@ -89,13 +95,13 @@ def run_visc_pert(model,vel,mode,par,sigma,reese,force_f):
     
     
     v = find_vel(model,vel)
-    folder = "/home/diego/Documents/ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
+    folder = homedir+"ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
     
-    rotorc_f = "/home/diego/Documents/From_Bob/Delta_Scuti_2010/"+model[0]+"Msun/"+model[0]+"Msun_V"+v+"/"
+    rotorc_f = homedir+"From_Bob/Delta_Scuti_2010/"+model[0]+"Msun/"+model[0]+"Msun_V"+v+"/"
     
-    bob_bin = "/home/diego/Documents/From_Bob/clotho_disc10_bin/"
+    bob_bin = homedir+"From_Bob/clotho_disc10_bin/"
     
-    static_m = "/home/diego/Documents/ROTORCmodels/visibilities/"
+    static_m = homedir+"ROTORCmodels/visibilities/"
     
     
     
@@ -127,7 +133,7 @@ def run_visc_pert(model,vel,mode,par,sigma,reese,force_f):
     #tfreq = 1.59692
     #print pyNRO.run_nro(tfreq,folder,model[0],v,par,mode)
     
-    pyNRO.run_nro(tfreq,folder,model[0],v,par,mode)
+    pyNRO.run_nro(tfreq,folder,model[0],v,par,mode,homedir)
     
     if not os.path.exists(static_m+model[0]+'Msun/'+'V'+v):
         os.makedirs(static_m+model[0]+'Msun/'+'V'+v)
@@ -278,17 +284,17 @@ def save_pert(model,vel,par,mode,l,n):
 
 """
 #MODE info:
-par = "ODD"
+par = "EVEN"
 model = ["2p5"]
 vel = 0 #index, not velocity!
-modes = [61]
+modes = [128]
 mode_by_freq = False
-clic = False
-new_mags = False
+clic = True
+new_mags = True
 save_perturbation = False
 only_mags = False
 #### contour plotting option:
-plot_contour = True
+plot_contour = False
 excl = 20 #How many core zones to exclude
 ####
 
@@ -302,7 +308,7 @@ f_freq = 4.375
 #modes = [51, 69, 78, 85, 92, 100, 106, 114, 122] # l=0, M2p5 V=0
 
 #freqs = [0.83464,1.17430,1.60199,1.94807,2.36756,2.86427,3.38705,3.92415,4.47259,5.01979] # l=2, M2p5 V=0
-#modes = [8,34,52,66,76,84]
+#modes = [8,34,52,66,76,84,90]
 
 #freqs = [0.85613,1.03514,1.28624,1.54099,1.79625,2.12890,2.64669,3.17963] # l=4 M2p5 V=0
 #modes = [12,26,40,49,61,72,80]
@@ -327,7 +333,7 @@ dt_grid = 500
 if mode_by_freq==True:
     modes = find_index(freqs,model,vel,par)
     
-
+incl = [0,15,30,45,60,75,90.0]
 for mode in modes:
     
     if force_f==True:
@@ -346,42 +352,52 @@ for mode in modes:
     for i in range(len(pmodels)):
         np.savetxt(modeloc+"model_MODE_"+str(mode)+"_r"+str(i+1),pmodels[i],'%.3f')
     
-    if new_mags==True:
-        try:
-            subprocess.call(['rm',modeloc+"magnitudes_MODE_"+str(mode)])
-        except:
-            print "No mag file to erase!"
     
     if clic==True:
         #Ugly way of running pyCLIC:
-        clic_folder = "/home/diego/Documents/pyCLIC/test/"
-        incl = [45.0]
-        rzone = 2
+        clic_folder = homedir+"pyCLIC/test/"
+        
+        rzone = 2 # Radial zone from the surfaces
         
         if only_mags==False:
             
             for i in incl:
+                
+                if new_mags==True:
+                    if (os.path.isfile(modeloc+"magnitudes"+"_i"+str(i)+"_MODE_"+str(mode)))==True:
+                        subprocess.call(['rm',modeloc+"magnitudes"+"_i"+str(i)+"_MODE_"+str(mode)])
+                    else:
+                        print "No mag. file to delete!" 
+                    if (os.path.isfile(modeloc+"walraven_magnitudes"+"_i"+str(i)+"_MODE_"+str(mode)))==True:
+                        subprocess.call(['rm',modeloc+"walraven_magnitudes"+"_i"+str(i)+"_MODE_"+str(mode)])
+                    else:
+                        print "No walraven_mag. file to delete!"
+
+                
                 subprocess.call(['cp',modeloc+"model_MODE_"+str(mode)+"_r"+str(rzone),clic_folder])
                     
-                if (os.path.isfile(modeloc+"magnitudes_MODE_"+str(mode)))==False:
-                    myfile = open(modeloc+"magnitudes_MODE_"+str(mode), "w")
+                if (os.path.isfile(modeloc+"magnitudes"+"_i"+str(i)+"_MODE_"+str(mode)))==False:
+                    myfile = open(modeloc+"magnitudes"+"_i"+str(i)+"_MODE_"+str(mode), "w")
                     myfile.write('#%5s %5s %9s %11s %11s %11s %11s %11s\n' % ("incl","n_r","lum","u","b","v","r","i"))
                     myfile.close()
-                    subprocess.call(['cp',modeloc+"magnitudes_MODE_"+str(mode),clic_folder])
+                    subprocess.call(['cp',modeloc+"magnitudes"+"_i"+str(i)+"_MODE_"+str(mode),clic_folder])
                 else:
-                    subprocess.call(['cp',modeloc+"magnitudes_MODE_"+str(mode),clic_folder])
+                    subprocess.call(['cp',modeloc+"magnitudes"+"_i"+str(i)+"_MODE_"+str(mode),clic_folder])
                     
-                if (os.path.isfile(modeloc+"walraven_magnitudes_MODE_"+str(mode)))==False:
-                    myfile = open(modeloc+"walraven_magnitudes_MODE_"+str(mode), "w")
+                if (os.path.isfile(modeloc+"walraven_magnitudes"+"_i"+str(i)+"_MODE_"+str(mode)))==False:
+                    myfile = open(modeloc+"walraven_magnitudes"+"_i"+str(i)+"_MODE_"+str(mode), "w")
                     myfile.write('#%5s %5s %9s %11s %11s %11s %11s %11s\n' % ("incl","n_r","lum","w","u","l","b","v"))
                     myfile.close()
-                    subprocess.call(['cp',modeloc+"walraven_magnitudes_MODE_"+str(mode),clic_folder])
+                    subprocess.call(['cp',modeloc+"walraven_magnitudes"+"_i"+str(i)+"_MODE_"+str(mode),clic_folder])
                 else:
-                    subprocess.call(['cp',modeloc+"walraven_magnitudes_MODE_"+str(mode),clic_folder])
+                    subprocess.call(['cp',modeloc+"walraven_magnitudes"+"_i"+str(i)+"_MODE_"+str(mode),clic_folder])
                 
                 os.chdir(clic_folder)
                 import main as pyclic
+                #import color_magnitudes as cmag
+                os.chdir(vis_path)
                 import color_magnitudes as cmag
+                os.chdir(clic_folder)
                 
                 pyclic.run_CLIC("model_MODE_"+str(mode)+"_r"+str(rzone),[i],False,3000.,12099.,2.0,par,dt_grid)
                 
@@ -390,28 +406,41 @@ for mode in modes:
                 subprocess.call(['cp','outputflux_i'+str(i)+'.final',modeloc+"outputflux_i"+str(i)+"_MODE_"+str(mode)+"_r"+str(rzone)])
                 subprocess.call(['rm',"model_MODE_"+str(mode)+"_r"+str(rzone)])
                 subprocess.call(['rm','outputflux_i'+str(i)+'.final'])
-                subprocess.call(['cp',"magnitudes_MODE_"+str(mode),modeloc])
-                subprocess.call(['rm',"magnitudes_MODE_"+str(mode)])
-                subprocess.call(['cp',"walraven_magnitudes_MODE_"+str(mode),modeloc])
-                subprocess.call(['rm',"walraven_magnitudes_MODE_"+str(mode)])
+                subprocess.call(['cp',"magnitudes"+"_i"+str(i)+"_MODE_"+str(mode),modeloc])
+                subprocess.call(['rm',"magnitudes"+"_i"+str(i)+"_MODE_"+str(mode)])
+                subprocess.call(['cp',"walraven_magnitudes"+"_i"+str(i)+"_MODE_"+str(mode),modeloc])
+                subprocess.call(['rm',"walraven_magnitudes"+"_i"+str(i)+"_MODE_"+str(mode)])
                 os.chdir(vis_path)
                 
         else:
             os.chdir(vis_path)
             import color_magnitudes as cmag
             os.chdir(modeloc)
-            if (os.path.isfile("magnitudes_MODE_"+str(mode)))==False:
-                myfile = open("magnitudes_MODE_"+str(mode), "w")
-                myfile.write('#%5s %5s %9s %11s %11s %11s %11s %11s\n' % ("incl","n_r","lum","u","b","v","r","i"))
-                myfile.close()
-
-                
-            if (os.path.isfile(modeloc+"walraven_magnitudes_MODE_"+str(mode)))==False:
-                myfile = open(modeloc+"walraven_magnitudes_MODE_"+str(mode), "w")
-                myfile.write('#%5s %5s %9s %11s %11s %11s %11s %11s\n' % ("incl","n_r","lum","w","u","l","b","v"))
-                myfile.close()
-            
             for i in incl:
+                
+                if new_mags==True:
+                    if (os.path.isfile(modeloc+"magnitudes"+"_i"+str(i)+"_MODE_"+str(mode)))==True:
+                        subprocess.call(['rm',modeloc+"magnitudes"+"_i"+str(i)+"_MODE_"+str(mode)])
+                    else:
+                        print "No mag. file to delete!" 
+                    if (os.path.isfile(modeloc+"walraven_magnitudes"+"_i"+str(i)+"_MODE_"+str(mode)))==True:
+                        subprocess.call(['rm',modeloc+"walraven_magnitudes"+"_i"+str(i)+"_MODE_"+str(mode)])
+                    else:
+                        print "No walraven_mag. file to delete!"
+            
+
+                if (os.path.isfile("magnitudes"+"_i"+str(i)+"_MODE_"+str(mode)))==False:
+                    myfile = open("magnitudes_MODE_"+str(mode), "w")
+                    myfile.write('#%5s %5s %9s %11s %11s %11s %11s %11s\n' % ("incl","n_r","lum","u","b","v","r","i"))
+                    myfile.close()
+    
+                    
+                if (os.path.isfile(modeloc+"walraven_magnitudes"+"_i"+str(i)+"_MODE_"+str(mode)))==False:
+                    myfile = open(modeloc+"walraven_magnitudes"+"_i"+str(i)+"_MODE_"+str(mode), "w")
+                    myfile.write('#%5s %5s %9s %11s %11s %11s %11s %11s\n' % ("incl","n_r","lum","w","u","l","b","v"))
+                    myfile.close()
+                
+
                 cmag.calc_mags("outputflux_i"+str(i)+"_MODE_"+str(mode)+"_r"+str(rzone),[i],mode,rzone)
                 cmag.calc_walraven("outputflux_i"+str(i)+"_MODE_"+str(mode)+"_r"+str(rzone),[i],mode,rzone)
 

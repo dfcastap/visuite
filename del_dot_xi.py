@@ -6,12 +6,17 @@ Created on Fri Apr 10 00:10:11 2015
 """
 
 import numpy as np
-
 import pylab as plt
-
 import scipy.misc as dtv
-
 from scipy.special import sph_harm
+import os
+
+vis_path = os.getcwd()
+global homedir
+if (os.path.isfile(vis_path+"/lachesis"))==False:
+    homedir = "/home/diego/Documents/"
+else:
+    homedir = "/home/castaned/"
 
 #import pandas as pd
 
@@ -62,9 +67,9 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     #---------------------------
     
     
-    folder = "/home/diego/Documents/ROTORCmodels/"+par+"/M"+model[0]+"_V"+vels[vel]+"/"
+    folder = homedir+"ROTORCmodels/"+par+"/M"+model[0]+"_V"+vels[vel]+"/"
     
-    rotorc_f = "/home/diego/Documents/From_Bob/Delta_Scuti_2010/"+model[0]+"Msun/"+model[0]+"Msun_V"+vels[vel]+"/"
+    rotorc_f = homedir+"From_Bob/Delta_Scuti_2010/"+model[0]+"Msun/"+model[0]+"Msun_V"+vels[vel]+"/"
     
     modefname = modeloc+modefname
     #modefname = modefname #viscalc local test
