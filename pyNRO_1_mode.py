@@ -43,8 +43,9 @@ def run_nro(tfreq,folder,model,vel,par,nmode,homedir):
     os.chdir(folder)
     dmod = glob.glob("Dmod_"+model+"M_V"+vel)[0]
     print dmod
-    steps = [1.1e-4,4.56e-5,8e-5,1e-4,1.3e-4]
+    steps = [1.1e-4,4.56e-4,8e-4,1e-4,1.3e-4]
     step = steps[0]
+    
     #if ifreq==0:
     #    ifreq = np.round(float(subprocess.check_output(['tail','-1','NRO_pts']).strip("\n").split("  ")[0]) - 1.5*step,5)
     #    tempfreq = 1.*ifreq
@@ -68,7 +69,7 @@ def run_nro(tfreq,folder,model,vel,par,nmode,homedir):
     step = steps[0]
     child.sendline ('3 '+str(step))
     child.expect ('Any change [n value]?')
-    child.sendline ('4 100')
+    child.sendline ('4 201')
     child.expect ('Any change [n value]?')
     child.sendline ('15')
     while c_flag!=-1:
@@ -112,7 +113,7 @@ def run_nro(tfreq,folder,model,vel,par,nmode,homedir):
             print "timeout!"
             c_flag = -1
             child.terminate()
-            return "***NRO died! freq = "+ str(tfreq)
+            return 1
         
         if c_flag==1:
             child.expect('Option?')
@@ -155,7 +156,7 @@ def run_nro(tfreq,folder,model,vel,par,nmode,homedir):
             child.expect ('Any change [n value]?')
             child.sendline ('15')
     
-    return "NRO done! freq = "+ str(freq)
+    return 0
     #child.sendeof()
     #print child.readlines()
 

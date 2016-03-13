@@ -14,7 +14,7 @@ import os
 vis_path = os.getcwd()
 global homedir
 if (os.path.isfile(vis_path+"/lachesis"))==False:
-    homedir = "/home/diego/Documents/"
+    homedir = "/home/castaned/Documents/"
 else:
     homedir = "/home/castaned/"
 
@@ -471,22 +471,37 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     
     return xi_r,xi_t,dt_t,dPhi*PIGR/Rsun,RS,dP,sigma,VS
 
-def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth,reese,sig):
+def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth,reese,sig,par):
     global folder, rotorc_f
     
-    t_reese = scale/(sig**2)
+    
     xi_r_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     xi_t_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     dt_t_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     ZG_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     
+    import legendre_interp as lint
+    
+    if par == "EVEN":
+        xi_r_fine = lint.leg_interp(xi_r[-depth::,:],8,"EVEN")
+    else:
+        xi_r_fine = lint.leg_interp(xi_r[-depth::,:],8,"OE")
+
+    #print "omega = ",sig
+    #scale = scale/(sig**2)
     if norm_f:    
         for i in np.arange(-(depth),0,1):
+            #i_max=np.argmax(np.abs(xi_r[i,:]))
             i_max=np.argmax(np.abs(xi_r[i,:]))
-            xi_r_n[i,:] =  xi_r[i,:]/xi_r[i,i_max]
-            xi_t_n[i,:] =  xi_t[i,:]/xi_r[i,i_max]
-            dt_t_n[i,:] =  dt_t[i,:]/xi_r[i,i_max]
-            ZG_n[i,:] =  ZG[i,:]/xi_r[i,i_max]
+            vmax = np.max(np.abs(xi_r_fine[i,:]))
+#            xi_r_n[i,:] =  xi_r[i,:]/xi_r[i,i_max]
+#            xi_t_n[i,:] =  xi_t[i,:]/xi_r[i,i_max]
+#            dt_t_n[i,:] =  dt_t[i,:]/xi_r[i,i_max]
+#            ZG_n[i,:] =  ZG[i,:]/xi_r[i,i_max]
+            xi_r_n[i,:] =  xi_r[i,:]/vmax
+            xi_t_n[i,:] =  xi_t[i,:]/vmax
+            dt_t_n[i,:] =  dt_t[i,:]/vmax
+            ZG_n[i,:] =  ZG[i,:]/vmax
         
         xi_r_n *= scale
         xi_t_n *= scale
@@ -498,7 +513,9 @@ def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth,reese,sig):
         dt_t_n = dt_t * scale
         ZG_n = ZG * scale
     
-    tmp=np.max(np.abs(xi_r[:,:]))
+    t_reese = scale/(sig**2)
+    tmp=(np.max(np.sqrt(xi_r[:,:]**2+xi_t[:,:]**2)))
+    print "Reese normalization:",t_reese*(1./tmp)
     if reese:
         """
         for i in np.arange(-(depth),0,1):
@@ -513,7 +530,7 @@ def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth,reese,sig):
         xi_t_n = xi_t[-(depth+1):-1,:]*t_reese*(1./tmp)
         dt_t_n = dt_t[-(depth+1):-1,:]*t_reese*(1./tmp)
         ZG_n = ZG[-(depth+1):-1,:]*t_reese*(1./tmp)
-        print "Reese normalization: "+str(t_reese)
+        #print "Reese normalization: "+str(t_reese)
         
         
     
@@ -533,14 +550,17 @@ def to_rotorc(xi_r_n,xi_t_n,dt_t_n,ZG_n):
         #container_t = pyL.legendre(xi_t_n[-1,:],8)
         #container_dt = pyL.legendre(dt_t_n[-1,:],8)
     
-        xi_r_rot[i] = np.interp(rot_ang,nro_ang+xi_t_n[i,:],xi_r_n[i,:])
-        xi_t_rot[i] = np.interp(rot_ang,nro_ang+xi_t_n[i,:],xi_t_n[i,:])
-        dt_t_rot[i] = np.interp(rot_ang,nro_ang+xi_t_n[i,:],dt_t_n[i,:])
-        ZG_rot[i] = np.interp(rot_ang,nro_ang+xi_t_n[i,:],ZG_n[i,:])
+        xi_r_rot[i] = np.interp(rot_ang,nro_ang*(1.+xi_t_n[i,:]),xi_r_n[i,:])
+        xi_t_rot[i] = np.interp(rot_ang,nro_ang*(1.+xi_t_n[i,:]),xi_t_n[i,:])
+        dt_t_rot[i] = np.interp(rot_ang,nro_ang*(1.+xi_t_n[i,:]),dt_t_n[i,:])
+        ZG_rot[i] = np.interp(rot_ang,nro_ang*(1.+xi_t_n[i,:]),ZG_n[i,:])
         #xi_r_rot[i] = np.interp(rot_ang,container_r[:,0],xi_r_n[i,:])
         #xi_t_rot[i] = np.interp(rot_ang,container_r[:,0],xi_t_n[i,:])
         #dt_t_rot[i] = np.interp(rot_ang,container_r[:,0],dt_t_n[i,:])
-        
+#    import pylab as plt
+#    plt.plot(nro_ang+xi_t_n[-2,:],xi_t_n[-2,:],marker="o")
+#    plt.plot(rot_ang,xi_t_rot[-2,:],marker="o")
+    
     return xi_r_rot,xi_t_rot,dt_t_rot,ZG_rot
     
 

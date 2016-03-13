@@ -10,6 +10,7 @@ import pyLegendre_anybf as pyL
 def leg_interp(var,nbfs,par):
     if par == "EVEN": parity = 0
     if par == "ODD": parity = 1
+    if par == "OE": parity = 2
     global leg
     xarr = np.linspace(10,80,nbfs)
     #data = np.genfromtxt(self.models[0]+"/temp_surf"+str(key))
@@ -18,8 +19,11 @@ def leg_interp(var,nbfs,par):
         if parity==0:
             newdata = 1.*var[i,:]
             leg = pyL.legendre(newdata,nbfs)
-        else:
+        elif parity==1:
             newdata = np.cos(np.deg2rad(xarr))*var[i,:]
+            leg = pyL.legendre_odd(newdata,nbfs)
+        elif parity==2:
+            newdata = var[i,:]
             leg = pyL.legendre_odd(newdata,nbfs)
         
         interp_var[i] = leg[:,1]
