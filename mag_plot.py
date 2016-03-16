@@ -28,69 +28,16 @@ wavebands = [3650.,4450.,5510.,6580.,8060.]
 
 wal_wave = [3250,3630,3840,4320,5470]
 
-#def find_vel(model,vel):
-#    #--------------------------
-#    #M1p875
-#    m1vels = ["0","35","62","83","105","125","146","165","187","207"]
-#    #M2
-#    m2vels = ["0","36","63","84","106","127","148","168","190","211"]
-#    #M2p25
-#    m3vels = ["0","36","65","87","109","131","152","173","195","217"]
-#    #M2p5
-#    m4vels = ["0","37p5","67","89","111","134","156","178","200","222"]
-#    #M3
-#    m5vels = ["0"]
-#    if model[0] == "1p875": vels=m1vels
-#    if model[0] == "2p25": vels=m3vels
-#    if model[0] == "2": vels=m2vels
-#    if model[0] == "2p5": vels=m4vels
-#    if model[0] == "3": vels=m5vels
-#    #---------------------------
-#    
-#    return vels[vel]
-#    
-#def find_sigma(model,vel,par,mode):
-#    global temp_freqs
-#    v = find_vel(model,vel)
-#    folder = homedir+"ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
-#    temp_freqs = np.genfromtxt(folder+"temp_freqs")
-#            
-#    return temp_freqs[mode-1]
-#    
-#def index_by_name(model,vel,par,mode):
-#    global temp_modes
-#    v = find_vel(model,vel)
-#    folder = homedir+"ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
-#    temp_modes = np.genfromtxt(folder+"temp_MODES")
-#    try:
-#        temp_modes = np.genfromtxt(folder+"temp_MODES",dtype='|S8',delimiter=8)
-#    except:
-#        temp_modes = np.genfromtxt(folder+"temp_MODES",dtype=str)
-#        temp_modes = [temp_modes[i,0]+" "+temp_modes[i,1] for i in range(len(temp_modes[:,0]))]
-#    
-#    idx = 999
-#    for i in range(len(temp_modes)):
-#        tmpmodes = temp_modes[i].split()
-#        tmpmode = mode.split()
-#        if len(tmpmodes)>1:
-#            if tmpmodes[0]==tmpmode[0] and tmpmodes[1]==tmpmode[1]:
-#                idx = i+1
-#    
-#    if idx==999:
-#        print "MODE",mode,"NOT FOUND BY NAME!"
-#        sys.exit(0)
-#    
-#    return idx
 
 calc_base_output = True                 
 fixed_observer = False
 observer_i = 0
 
 mass = "1p875"
-vel = 6
+vel = 0
 
 
-modes = ["3 p1"]
+modes = ["10 p1"]
 freqs = [1.63480]
 
 static_i = [0,10,20,30,40,50,60,70,80,90]
@@ -284,9 +231,14 @@ def mag_amplitude_plot(minl,maxl):
     global ell,modes,colors,bfile,base,par,mag,freqs,incl,static_i,fixed_observer,observer_i,mass,vel,c_modes
     tmp =[]
     for j in range(len(incl)):
+        if fixed_observer==True:
+            bnum = base[static_i[observer_i]]
+        else:
+            bnum = base[j]
         #tmp.append(1+(np.abs(minl[0][j][4]-maxl[0][j][4])-base[j])/base[j])
         #tmp.append((np.abs(minl[0][j][4]-maxl[0][j][4])))
         tmp.append(np.abs(-2.5*np.log10(minl[0][j][4]/maxl[0][j][4])))
+        #tmp.append(np.abs(-2.5*np.log10(minl[0][j][4]/bnum))+np.abs(-2.5*np.log10(maxl[0][j][4]/bnum)))
     
     lbl = "$\ell$="+str(c_modes[0].split()[0])
     lsty = "-"
@@ -306,6 +258,7 @@ maxl = load_modes()
 minl = load_modes("/minL")
 
 mag_amplitude_plot(minl,maxl)
+plt.ylim(0,2.5e-1)
 #lum_incl_plot()
 #lum_plot()
 #plt.grid()
