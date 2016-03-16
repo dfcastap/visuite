@@ -27,103 +27,13 @@ if (os.path.isfile(vis_path+"/lachesis"))==False:
 else:
     homedir = "/home/castaned/"
 
-#def find_vel(model,vel):
-#    #--------------------------
-#    #M1p875
-#    m1vels = ["0","35","62","83","105","125","146","165","187","207"]
-#    #M2
-#    m2vels = ["0","36","63","84","106","127","148","168","190","211"]
-#    #M2p25
-#    m3vels = ["0","36","65","87","109","131","152","173","195","217"]
-#    #M2p5
-#    m4vels = ["0","37p5","67","89","111","134","156","178","200","222"]
-#    #M3
-#    m5vels = ["0"]
-#    if model[0] == "1p875": vels=m1vels
-#    if model[0] == "2p25": vels=m3vels
-#    if model[0] == "2": vels=m2vels
-#    if model[0] == "2p5": vels=m4vels
-#    if model[0] == "3": vels=m5vels
-#    #---------------------------
-#    
-#    return vels[vel]
-#    
-#def find_index(freq,model,vel,par):
-#    global temp_freqs
-#    
-#    v = find_vel(model,vel)
-#    folder = homedir+"ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
-#    temp_freqs = np.genfromtxt(folder+"temp_freqs")
-#    temp_freqs[:] *= 1e5
-#    temp_freqs = ((np.array(temp_freqs)).astype(int)).tolist()
-#    idx = []
-#    for i in range(len(freq)):
-#        try:
-#            idx.append(temp_freqs.index(int(freq[i]*1e5))+1)
-#        except:
-#            print "No match for freq: ",freq[i]
-#            
-#    return idx
-#    
-#def find_sigma(model,vel,par,mode):
-#    global temp_freqs
-#    v = find_vel(model,vel)
-#    folder = homedir+"ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
-#    temp_freqs = np.genfromtxt(folder+"temp_freqs")
-#            
-#    return temp_freqs[mode-1]
-#    
-#def find_name(model,vel,par,mode):
-#    global temp_modes
-#    v = find_vel(model,vel)
-#    folder = homedir+"ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
-#    temp_modes = np.genfromtxt(folder+"temp_MODES")
-#    try:
-#        temp_modes = np.genfromtxt(folder+"temp_MODES",dtype='|S8',delimiter=8)
-#    except:
-#        temp_modes = np.genfromtxt(folder+"temp_MODES",dtype=str)
-#        temp_modes = [temp_modes[i,0]+" "+temp_modes[i,1] for i in range(len(temp_modes[:,0]))]
-#
-#            
-#    return temp_modes[mode-1]
-#    
-#
-#def index_by_name(model,vel,par,mode):
-#    global temp_modes
-#    v = find_vel(model,vel)
-#    folder = homedir+"ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
-#    temp_modes = np.genfromtxt(folder+"temp_MODES")
-#    try:
-#        temp_modes = np.genfromtxt(folder+"temp_MODES",dtype='|S8',delimiter=8)
-#    except:
-#        temp_modes = np.genfromtxt(folder+"temp_MODES",dtype=str)
-#        temp_modes = [temp_modes[i,0]+" "+temp_modes[i,1] for i in range(len(temp_modes[:,0]))]
-#    
-#    idx = 999
-#    for i in range(len(temp_modes)):
-#        tmpmodes = temp_modes[i].split()
-#        tmpmode = mode.split()
-#                
-#        if len(tmpmodes)>1:
-#            if tmpmode[0] == "0":
-#                if tmpmodes[0]==tmpmode[0] and (tmpmodes[1].strip("H")).strip("h")==(tmpmode[1].strip("H")).strip("h").strip("p"):
-#                    idx = i+1
-#            else:
-#                if tmpmodes[0]==tmpmode[0] and tmpmodes[1]==tmpmode[1]:
-#                    idx = i+1
-#    
-#    if idx==999:
-#        print "MODE",mode,"NOT FOUND BY NAME!"
-#        
-#    
-#    return idx
 
 def run_visc_pert(model,vel,mode,par,sigma,reese,force_f,minL):
     # Info for del dot xi calculation:------------------
     # NRO Mode filename:
     #modefname="MODE1"
     norm_f = True
-    scale = 0.01/(sigma**2)
+    scale = 0.02/(sigma**2)
     #scale = 0.02
     depth = 10 #radial zones down from the surface
     #---------------------------------------------------
@@ -207,6 +117,7 @@ def run_visc_pert(model,vel,mode,par,sigma,reese,force_f,minL):
     modeloc = where+"/"
     modefname = 'MODE_'+par+'_'+str(mode)
     #modefname = 'MODE13'
+    global s_model
     s_model = np.genfromtxt(glob.glob(static_m+model[0]+'Msun/'+model[0]+'Msun_V'+v+"*")[0])
     
     global xi_r_rot,xi_t_rot,dt_t_rot,zg_rot    
@@ -257,18 +168,19 @@ def run_visc_pert(model,vel,mode,par,sigma,reese,force_f,minL):
         
     
     
-    
+#    
 #    #plt.plot(p_angles_fine[2,:],xi_t_fine[2,:])
-#    plt.plot(p_angles_fine[2,:],lint.leg_interp(dt_t[-depth::,:],8,"OE")[2,:])
-#    plt.plot(p_angles[2,:],dt_t[-depth+2,:],"o",mfc="white",mec="k",mew=1)
+#    plt.plot(p_angles_fine[2,:],lint.leg_interp(dt_t[-depth::,:],8,"OE")[2,:],label=find_name(model,vel,par,mode))
+#    #plt.plot(p_angles[2,:],dt_t[-depth+2,:],"o",mfc="white",mec="k",mew=1)
 #    plt.grid()
 #    plt.xlim(0,90)
 #    plt.yticks()
 #    plt.xlabel("Colatitude [deg]")
-#    plt.ylabel(r"$\xi_{t}$")
-#    plt.title("Mode:" + find_name(model,vel,par,mode))
+#    plt.ylabel(r"$\delta$ T/T")
+#    #plt.title("Mode:" + find_name(model,vel,par,mode))
 #    #ax.yaxis.set_major_formatter(majorFormatter) 
 #    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+#    plt.title(r"M="+model[0]+"M$_{\odot}$, V="+v+"km s$^{-1}$")
     
        
     
@@ -336,25 +248,28 @@ def run_visc_pert(model,vel,mode,par,sigma,reese,force_f,minL):
             pmodels.append(tmodel)
     
     
+#    global old_modes
 #    import seaborn as sns
 #    sns.set(style="white",rc={"figure.figsize": (8, 8),'axes.labelsize': 16,
 #                              'ytick.labelsize': 12,'xtick.labelsize': 12,
 #                              'legend.fontsize': 16,'axes.titlesize':18,'font.size':14})
 #    #plt.plot(pmodels[2][0:-1,0],np.diff(pmodels[2][:,1])/(pmodels[2][1,0]-pmodels[2][0,0]))
-#    plt.plot(pmodels[2][:,0],(pmodels[2][:,2]),"o")
+#    #plt.plot(pmodels[2][:,0],(pmodels[2][:,2]),"o")
 #    #plt.plot(pmodels_fine[2][0:-1,0],np.diff(pmodels_fine[2][:,1])/(pmodels_fine[2][1,0]-pmodels_fine[2][0,0]))
-#    plt.plot(pmodels_fine[2][:,0],pmodels_fine[2][:,2],lw=1.5)
-#    #plt.plot(s_model[:,0],s_model[:,2])
+#    plt.plot(pmodels_fine[2][:,0],pmodels_fine[2][:,2],lw=1.5,label=old_modes[0])
+#    #plt.plot(s_model[:,0],s_model[:,2],label="Static")
 #    #plt.vlines(90,9100,9300)
 #    o_lims = plt.ylim()
-#    plt.vlines(90,o_lims[0],o_lims[1])
+#    plt.vlines(90,min(pmodels_fine[2][:,2])-100,max(pmodels_fine[2][:,2])+100)
 #    plt.grid()
 #    plt.xlim(0,180)
 #    plt.ylim(o_lims[0],o_lims[1])
 #    plt.xlabel("Colatitude [deg]")
 #    #plt.ylabel("Radius [M$_{\odot}$]")
 #    plt.ylabel("Temperature [K]")
-#    plt.title("Mode: " + find_name(model,vel,par,mode))
+#    plt.legend(loc="best")
+#    #plt.title("Mode: " + find_name(model,vel,par,mode))
+#    plt.title(r"Perturbed T$_{\mathrm{eff}}$ - M="+model[0]+"M$_{\odot}$, V="+v+"km s$^{-1}$")
 #    
     
     return modeloc,pmodels,pmodels_fine
@@ -532,10 +447,10 @@ def run_pipeline(sub_dir="",minL=False):
     global start,model,vel,modes,old_modes,modeloc,pmodels,pmodels_fine,modes_not_found
     #MODE info:
     par = "ODD"
-    model = ["1p875"]
-    vel = 5 #index, not velocity!
+    model = ["2"]
+    vel =  8 #index, not velocity!
     #modes = list_gen([0,1,2,3,4,5,6],1,3,"p")
-    modes = ["3 p1"]
+    modes = list_gen([0,1,2,3,4,5,6,7,8,9,10],1,1,"p")
     #["1 p1","1 p2","1 p3","1 p4","1 p5", "1 p6", "1 p7", "1 p8", "1 p9"]
     #["0 1H","0 2H","0 3H","0 4H","0 5H","0 6H","0 7H","0 8H","0 9H","0 10H"]
     
