@@ -12,8 +12,8 @@ import del_dot_xi as ddxi
 import pyNRO_1_mode as pyNRO
 import scipy.integrate as scint
 import legendre_interp as lint
-import sys
-from timeit import default_timer as timer
+import os
+
 
 vis_path = os.getcwd()
 
@@ -22,6 +22,132 @@ if (os.path.isfile(vis_path+"/lachesis"))==False:
     homedir = "/home/castaned/Documents/"
 else:
     homedir = "/home/castaned/"
+    
+class emode:
+    """ Mode class. Contains relevant information of a mode."""
+    
+    def __init__(self,mass,vel,mode,par="EVEN"):
+        model = [mass]
+        mode_by_name = False
+        self.mass = mass
+        self.vel_idx = vel
+        
+        if type(mode) == float:
+            self.index = find_index(freqs,model,vel,par)
+            mode = self.index
+
+        if type(mode) == int:
+            self.name = find_name(model,vel,par,mode).strip()
+            mode = self.name
+            mode_by_name = True
+            
+        if type(mode) == str:
+            mode_by_name = True
+            self.name = mode
+            
+        
+        if mode_by_name==True:
+            if int(mode.split()[0])%2==0:
+                par = "EVEN"
+            else:
+                par = "ODD"
+            
+            self.index = index_by_name(model,vel,par,mode)
+            if self.index != 999:
+                self.eq_vel = find_vel(model,vel)
+                self.parity = par
+                self.frequency = find_sigma(model,vel,par,self.index)
+                self.smix = find_smix(model,vel,par,self.index)
+                self.temp_surf = load_temp_surf([self.mass],self.vel_idx,self.parity,self.index)
+                self.area = self.__calc_area()
+                self.__check_vis()
+            else:
+                print "mode not found!"
+
+    
+    def plot_dr_r(self,nbfs=8,invert=False):
+        import seaborn
+        import pylab as plt
+        seaborn.set(style="whitegrid",rc={"figure.figsize": (8, 8),'axes.labelsize': 16,
+                              'ytick.labelsize': 12,'xtick.labelsize': 12,
+                              'legend.fontsize': 10,'axes.titlesize':18,'font.size':14})
+
+        #freq_val = QString(str())
+        xarr = np.linspace(10,80,nbfs)
+        #data = np.genfromtxt(self.models[0]+"/temp_surf"+str(key))
+        if self.parity=="EVEN":
+            newdata = 1.*self.temp_surf
+            leg = lint.pyL.legendre(newdata,nbfs)
+        else:
+            newdata = np.cos(np.deg2rad(xarr))*self.temp_surf
+            leg = lint.pyL.legendre_odd(newdata,nbfs)
+        
+        plt.xlabel("Polar Angle (deg)")
+        plt.ylabel("$\delta$R/R")
+        plt.xlim(0,90)
+        plt.hlines(0,0,90,color='k',linestyle='--')
+        if invert==True:
+            newdata = -1.*newdata
+            leg[:,1] = -1.*leg[:,1]
+        plt.plot(xarr,newdata,"o",color="b",mfc="white",mec="k",mew=1)
+        plt.plot(leg[:,0],leg[:,1],label=r"$\ell$="+self.name+"-("+self.mass.replace("p",".")+"M$_{\odot}$-V="+self.eq_vel+")")     
+        plt.legend(loc="best")
+        #plt.title(self.mass.replace("p",".")+"M$_{\odot}$-V="+self.eq_vel)
+        return
+        
+    def __calc_area(self,nbfs=8):
+        xarr = np.linspace(10,80,nbfs)
+        
+        if self.parity=="EVEN":
+            newdata = 1.*self.temp_surf
+            leg = lint.pyL.legendre(newdata,nbfs)
+        else:
+            newdata = np.cos(np.deg2rad(xarr))*self.temp_surf
+            leg = lint.pyL.legendre_odd(newdata,nbfs)
+            
+
+        if self.parity=="EVEN":
+            leg_plus = np.array([leg[i] for i in range(len(leg[:,0])) if leg[i,1]>0 and leg[i,0]>=10 and leg[i,0]<=80])
+            leg_minus = np.array([leg[i] for i in range(len(leg[:,0])) if leg[i,1]<0 and leg[i,0]>=10 and leg[i,0]<=80])
+        else:
+            leg_plus = np.array([leg[i] for i in range(len(leg[:,0])) if leg[i,1]>0 and leg[i,0]>=10 and leg[i,0]<=80])
+            leg_minus = np.array([leg[i] for i in range(len(leg[:,0])) if leg[i,1]<0 and leg[i,0]>=10 and leg[i,0]<=80])
+        if len(leg_plus)==0: leg_plus=np.zeros([2,2])
+        if len(leg_minus)==0: leg_minus=np.zeros([2,2])
+        a_plustemp = np.abs(scint.trapz(leg_plus[:,1],leg_plus[:,0]))
+        a_minustemp = np.abs(scint.trapz(leg_minus[:,1],leg_minus[:,0]))
+        if a_plustemp > a_minustemp:
+            return a_minustemp/a_plustemp
+        else:
+            return a_plustemp/a_minustemp
+            
+    def __check_vis(self):
+        static_m = homedir+"ROTORCmodels/visibilities/"
+        where =static_m+self.mass+'Msun/V'+self.eq_vel+"/MODE_"+self.parity+"_"+str(self.index)
+        lst = sorted(glob.glob(where+"/magnitudes*"))
+        lst_min = sorted(glob.glob(where+"/minL/magnitudes*"))
+        lst_wal = sorted(glob.glob(where+"/walraven_magnitudes*"))
+        lst_wal_min = sorted(glob.glob(where+"/minL/walraven_magnitudes*"))
+        self.j_mags = []
+        self.j_mags_min = []
+        self.w_mags = []
+        self.w_mags_min = []
+        if lst > 0:
+            self.j_mags = np.array([np.genfromtxt(lst[i]) for i in range(len(lst))])
+            self.j_mags_min = np.array([np.genfromtxt(lst_min[i]) for i in range(len(lst_min))])
+        else:
+            print "No Johnson magnitudes available!"
+            
+        if lst_wal > 0:
+            self.w_mags = np.array([np.genfromtxt(lst_wal[i]) for i in range(len(lst))])
+            self.w_mags_min = np.array([np.genfromtxt(lst_wal_min[i]) for i in range(len(lst_wal_min))])
+        else:
+            print "No Walraven magnitudes available!"
+            
+        return
+        
+        
+        
 
 def find_vel(model,vel):
     #--------------------------
@@ -43,7 +169,14 @@ def find_vel(model,vel):
     #---------------------------
     
     return vels[vel]
+
+def load_temp_surf(model,vel,par,mode):
+    v = find_vel(model,vel)
+    folder = homedir+"ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
+    temp_surf = np.genfromtxt(folder+"/pack_temp_surf")
     
+    return temp_surf[mode-1]
+   
 def find_index(freq,model,vel,par):
     global temp_freqs
     
@@ -68,6 +201,13 @@ def find_sigma(model,vel,par,mode):
     temp_freqs = np.genfromtxt(folder+"temp_freqs")
             
     return temp_freqs[mode-1]
+    
+def find_smix(model,vel,par,mode): 
+    v = find_vel(model,vel)
+    folder = homedir+"ROTORCmodels/"+par+"/M"+model[0]+"_V"+v+"/"
+    temp_smix = np.genfromtxt(folder+"/temp_smixes")
+    
+    return temp_smix[mode-1]
     
 def find_name(model,vel,par,mode):
     global temp_modes
@@ -505,3 +645,4 @@ def list_gen(ells,nmin,nmax,tpe):
             ls.append(str(j)+" "+tpe+str(i))
             
     return ls
+    
