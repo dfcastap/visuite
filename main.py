@@ -14,10 +14,10 @@ import del_dot_xi as ddxi
 import pyNRO_1_mode as pyNRO
 import scipy.integrate as scint
 import legendre_interp as lint
-import sys
+import seaborn as sns
 from timeit import default_timer as timer
 
-from main_modules import find_vel,find_index,find_sigma,find_name,index_by_name
+from main_modules import find_vel,find_index,find_sigma,find_name,index_by_name,emode,phaser,phaser2,find_dr_ofmax
 
 vis_path = os.getcwd()
 
@@ -28,14 +28,22 @@ else:
     homedir = "/home/castaned/"
 
 
-def run_visc_pert(model,vel,mode,par,sigma,reese,force_f,minL):
+def run_visc_pert(model,vel,mode,par,sigma,reese,force_f,minL,phase=0.,ampl=1.,tlmax=0.,tcut=False):
     # Info for del dot xi calculation:------------------
     # NRO Mode filename:
     #modefname="MODE1"
+    global kind
+    
     norm_f = True
-    scale = 0.02/(sigma**2)
-    #scale = 0.02
+    ssc = 0.02
+    if model[0]=="2p5": ssc = 0.01
+    if kind=="g":
+        scale = ssc
+    else:
+        scale = ssc/(sigma**2)
+    scale =0.001*drtempmax
     depth = 10 #radial zones down from the surface
+    forcenro = False
     #---------------------------------------------------
     
     #clic_run = True
@@ -78,7 +86,7 @@ def run_visc_pert(model,vel,mode,par,sigma,reese,force_f,minL):
     if not os.path.exists(static_m+model[0]+'Msun/'+'V'+v+"/MODE_"+par+"_"+str(mode)):
         os.makedirs(where)
     
-    if os.path.isfile(where+'/MODE_'+par+'_'+str(mode))==False:
+    if os.path.isfile(where+'/MODE_'+par+'_'+str(mode))==False or forcenro==True:
         #check if visibility file from pulset exits for the selected model:
         
         #v_file = glob.glob(rotorc_f+"visibility_file")
@@ -121,12 +129,22 @@ def run_visc_pert(model,vel,mode,par,sigma,reese,force_f,minL):
     s_model = np.genfromtxt(glob.glob(static_m+model[0]+'Msun/'+model[0]+'Msun_V'+v+"*")[0])
     
     global xi_r_rot,xi_t_rot,dt_t_rot,zg_rot    
-    global xi_r,xi_t,dt_t,zg,r,zp,cs
+    global xi_r,xi_t,dt_t,zg,r,zp,cs,xi_dot_g
     global xi_r_n,xi_t_n,dt_t_n,zg_n
     
-    xi_r,xi_t,dt_t,zg,r,zp,sig,cs = ddxi.calcdeldotxi(par,model,vel,modeloc,modefname)
+    xi_r,xi_t,dt_t,zg,r,zp,sig,cs,xi_dot_g = ddxi.calcdeldotxi(par,model,vel,modeloc,modefname)
             
-    xi_r_n,xi_t_n,dt_t_n,zg_n = ddxi.norm_and_scale(xi_r,xi_t,dt_t,zg,norm_f,scale,depth,reese,sig,par)
+    xi_r_n,xi_t_n,dt_t_n,zg_n,dr_n = ddxi.norm_and_scale(xi_r,xi_t,dt_t,r,zg,norm_f,scale,depth,reese,sig,par)
+
+    if phase!=0:
+        #dt_t_n = phaser(dt_t_n,phase,1.,tlmax)
+        #xi_r_n = phaser(xi_r_n,0.,1.,tlmax)
+        dt_t_n,psi_T,psi_L,mx = phaser2(dt_t_n,phase,np.max(np.abs(dt_t[-depth])),np.max(np.abs(xi_r[-depth])))
+        xi_r_n = phaser(xi_r_n,0.,1.,mx+np.pi)
+        print "Theta L_max-----------> ",np.rad2deg(mx),"deg"
+        np.savetxt(modeloc+"phases.txt",[psi_T,psi_L,np.rad2deg(mx+np.pi)],header="psi_T[deg],psi_L[deg],theta_max_L[deg]")
+        
+        
 
     a_r = scint.trapz(dt_t_n[-1,:])
     
@@ -153,39 +171,74 @@ def run_visc_pert(model,vel,mode,par,sigma,reese,force_f,minL):
         xi_t_fine = lint.leg_interp(xi_t_n[:,:],8,"OE")
         dt_t_fine = lint.leg_interp(dt_t_n[:,:],8,"OE")
         
+    global rs_n,rs_rot
+    rs_n = np.empty(xi_r_fine.shape)
+    for d in range(depth):
+        rs_n[d,:] = np.interp(np.linspace(0,90,100),np.linspace(10,80,8),r[-d-1,:])
+    
+#    dr_n = xi_r_fine*rs_n
+#    for i in range(len(dr_n[:,0])):
+#        imax = np.argmax(np.abs(dr_n[i,:]))
+#        dr_n[i,:] = dr_n[i,:]/(dr_n[i,imax]/2.28534026)
+        
+    
+    
     p_angles = np.empty(np.shape(xi_r_n))
     p_angles_fine = np.empty(np.shape(xi_r_fine))
     rot_ang = np.arange(4.5,90.,9)
     xi_r_rot = np.empty((depth,len(rot_ang)))
     xi_t_rot = np.empty((depth,len(rot_ang)))
     dt_t_rot = np.empty((depth,len(rot_ang)))
+    rs_rot = np.empty((depth,len(rot_ang)))
     for d in range(depth):
         p_angles[d,:] = (np.linspace(10,80,8))*(1.+xi_t_n[d,:])
         p_angles_fine[d,:] = (np.linspace(0,90,100))*(1.+xi_t_fine[d,:])
         xi_r_rot[d,:] = np.interp(rot_ang,p_angles_fine[d,:],xi_r_fine[d,:]) 
         xi_t_rot[d,:] = np.interp(rot_ang,p_angles_fine[d,:],xi_t_fine[d,:])
         dt_t_rot[d,:] = np.interp(rot_ang,p_angles_fine[d,:],dt_t_fine[d,:])
+        rs_rot[d,:] = np.interp(rot_ang,p_angles_fine[d,:],rs_n[d,:])
         
     
     
 #    
 #    #plt.plot(p_angles_fine[2,:],xi_t_fine[2,:])
-#    plt.plot(p_angles_fine[2,:],lint.leg_interp(dt_t[-depth::,:],8,"OE")[2,:],label=find_name(model,vel,par,mode))
+#    if dr_n[0,-1]>0:
+#        ivrt = 1.
+#    else:
+#        ivrt = -1.
+#    vr = ivrt*dr_n[0,:]
+#    #vr = ivrt*dt_t_fine[0,:]
+#    #lblb = find_vel(model,vel)+" km s$^{-1}$ "+find_name(model,vel,par,mode)
+#    lblb = find_vel(model,vel)+" km s$^{-1}$ "
+#    #lblb = r"$\ell$ = "+find_name(model,vel,par,mode).split()[0]
+#    etsy = "-"
+#    if find_name(model,vel,par,mode).split()[0] == "2": etsy = "-"
+#    if par == "EVEN":
+#        #plt.plot(p_angles_fine[2,:],ivrt*lint.leg_interp(vr[:,:],8,"EVEN")[0,:],label=lblb)
+#        plt.plot(p_angles_fine[2,:],vr,ls=etsy,label=lblb)
+#        
+#    else:
+#        #plt.plot(p_angles_fine[2,:],ivrt*lint.leg_interp(vr[:,:],8,"OE")[0,:],label=lblb)
+#        plt.plot(p_angles_fine[2,:],vr,ls=etsy,label=lblb)
+#    #plt.plot(p_angles_fine[2,:],lint.leg_interp(xi_r[-depth::,:],8,"OE")[2,:],label=find_name(model,vel,par,mode))
 #    #plt.plot(p_angles[2,:],dt_t[-depth+2,:],"o",mfc="white",mec="k",mew=1)
-#    plt.grid()
+#    #plt.grid()
 #    plt.xlim(0,90)
 #    plt.yticks()
 #    plt.xlabel("Colatitude [deg]")
-#    plt.ylabel(r"$\delta$ T/T")
+#    plt.ylabel(r"$\delta$R [R$\odot$]")
+#    #plt.ylabel(r"$\delta$T/T")
+#    plt.legend(loc="best")
 #    #plt.title("Mode:" + find_name(model,vel,par,mode))
 #    #ax.yaxis.set_major_formatter(majorFormatter) 
 #    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-#    plt.title(r"M="+model[0]+"M$_{\odot}$, V="+v+"km s$^{-1}$")
+#    #plt.title(r"M="+model[0]+"M$_{\odot}$, V="+v+"km s$^{-1}$")
+#    plt.title(r"M="+model[0]+"M$_{\odot}$")
     
        
     
     print "Generating fine clic model..."    
-    pmodels_fine = gen_fine_clic(p_angles_fine,xi_r_fine,xi_t_fine,dt_t_fine,s_model,model,depth,inv_f,par)
+    pmodels_fine = gen_fine_clic(p_angles_fine,xi_r_fine,xi_t_fine,dt_t_fine,rs_n,dr_n,s_model,model,depth,inv_f,par,tcut)
 
         
     ############ find the perturbed models:
@@ -228,7 +281,7 @@ def run_visc_pert(model,vel,mode,par,sigma,reese,force_f,minL):
         pmodels = []
         odd_angles = np.arange(4.5,180.,9)
         for i in range(depth):
-            pert_r[0:10,i] = s_model[:,1]*(1.+inv_f*xi_r_rot[-i,:])
+            pert_r[0:10,i] = s_model[:,1]+inv_f*xi_r_rot[-i,:]*rs_rot[-i,:]
             pert_t[0:10,i] = s_model[:,2]*(1.+inv_f*dt_t_rot[-i,:])
             pert_r[10:20,i] = s_model[::-1,1]*(1.-inv_f*xi_r_rot[-i,::-1])
             pert_t[10:20,i] = s_model[::-1,2]*(1.-inv_f*dt_t_rot[-i,::-1])
@@ -247,34 +300,35 @@ def run_visc_pert(model,vel,mode,par,sigma,reese,force_f,minL):
                 
             pmodels.append(tmodel)
     
-    
+#    plt.plot(pmodels[-1][:,0],s_model[:,1],"--",color="0.5")
+#    
 #    global old_modes
 #    import seaborn as sns
 #    sns.set(style="white",rc={"figure.figsize": (8, 8),'axes.labelsize': 16,
 #                              'ytick.labelsize': 12,'xtick.labelsize': 12,
 #                              'legend.fontsize': 16,'axes.titlesize':18,'font.size':14})
-#    #plt.plot(pmodels[2][0:-1,0],np.diff(pmodels[2][:,1])/(pmodels[2][1,0]-pmodels[2][0,0]))
-#    #plt.plot(pmodels[2][:,0],(pmodels[2][:,2]),"o")
+#    #plt.plot(pmodels[2][0:-1,0],np.diff(pmodels[2][:,1])/(pmodels[2][1,0]-pmodels[2][0,0]),label=r"$\ell=$"+find_name(model,vel,par,mode).strip().split()[0])
+#    #plt.plot(pmodels[2][:,0],pmodels[2][:,1],label="old way")
 #    #plt.plot(pmodels_fine[2][0:-1,0],np.diff(pmodels_fine[2][:,1])/(pmodels_fine[2][1,0]-pmodels_fine[2][0,0]))
-#    plt.plot(pmodels_fine[2][:,0],pmodels_fine[2][:,2],lw=1.5,label=old_modes[0])
-#    #plt.plot(s_model[:,0],s_model[:,2],label="Static")
+#    plt.plot(pmodels_fine[2][:,0],pmodels_fine[2][:,2],"-",lw=1.5,label=r"$\ell=$"+find_name(model,vel,par,mode).strip().split()[0])
+#    #plt.plot(s_model[:,0],s_model[:,1],label="Static")
 #    #plt.vlines(90,9100,9300)
 #    o_lims = plt.ylim()
-#    plt.vlines(90,min(pmodels_fine[2][:,2])-100,max(pmodels_fine[2][:,2])+100)
+#    #plt.vlines(90,min(pmodels_fine[2][:,2])-100,max(pmodels_fine[2][:,2])+100)
 #    plt.grid()
 #    plt.xlim(0,180)
-#    plt.ylim(o_lims[0],o_lims[1])
+#    #plt.ylim(o_lims[0],o_lims[1])
 #    plt.xlabel("Colatitude [deg]")
-#    #plt.ylabel("Radius [M$_{\odot}$]")
-#    plt.ylabel("Temperature [K]")
+#    plt.ylabel("Radius [M$_{\odot}$]")
+#    #plt.ylabel("Temperature [K]")
 #    plt.legend(loc="best")
 #    #plt.title("Mode: " + find_name(model,vel,par,mode))
-#    plt.title(r"Perturbed T$_{\mathrm{eff}}$ - M="+model[0]+"M$_{\odot}$, V="+v+"km s$^{-1}$")
-#    
+    #plt.title(r"Perturbed T$_{\mathrm{eff}}$ - M="+model[0]+"M$_{\odot}$, V="+v+"km s$^{-1}$")
+    
     
     return modeloc,pmodels,pmodels_fine
     
-def gen_fine_clic(p_angles_fine,xi_r,xi_t,dt_t,s_model,model,depth,inv_f,par):
+def gen_fine_clic(p_angles_fine,xi_r,xi_t,dt_t,rs,dr_n,s_model,model,depth,inv_f,par,tcut):
     clic_theta_grid = 200
     clic_theta = np.linspace(0,180,clic_theta_grid)
     global clic_xi_r,clic_xi_t,clic_dt_t
@@ -282,19 +336,27 @@ def gen_fine_clic(p_angles_fine,xi_r,xi_t,dt_t,s_model,model,depth,inv_f,par):
     clic_xi_r = np.zeros((depth,clic_theta_grid))
     clic_xi_t = np.zeros((depth,clic_theta_grid))
     clic_dt_t = np.zeros((depth,clic_theta_grid))
-    cut = False
+    clic_rs = np.zeros((depth,clic_theta_grid))
+    if tcut:
+        cut=True
+        print "--- CUT ---"
+    else:
+        cut=False
     for d in range(depth):
         if cut:
             xi_r[d,0:12] = 1.*xi_r[d,12]
             xi_t[d,0:12] = 1.*xi_t[d,12]
             dt_t[d,0:12] = 1.*dt_t[d,12]
+            rs[d,0:12] = 1.*rs[d,12]
             if par=="EVEN":
                 xi_r[d,-9::] = 1.*xi_r[d,-10]
                 xi_t[d,-9::] = 1.*xi_t[d,-10]
                 dt_t[d,-9::] = 1.*dt_t[d,-10]
+                rs[d,-9::] = 1.*rs[d,-10]
         clic_xi_r[d,0:100] = np.interp(clic_theta[0:100],np.linspace(0,90,100),xi_r[d,:])
         clic_xi_t[d,0:100] = np.interp(clic_theta[0:100],np.linspace(0,90,100),xi_t[d,:])
         clic_dt_t[d,0:100] = np.interp(clic_theta[0:100],np.linspace(0,90,100),dt_t[d,:])
+        clic_rs[d,0:100] = np.interp(clic_theta[0:100],np.linspace(0,90,100),rs[d,:])
     
     
     for i in range(depth):
@@ -307,8 +369,10 @@ def gen_fine_clic(p_angles_fine,xi_r,xi_t,dt_t,s_model,model,depth,inv_f,par):
             clic_xi_t[i,100::] = -1.*clic_xi_t[i,::-1][100::]
             clic_dt_t[i,100::] = -1.*clic_dt_t[i,::-1][100::]
             
+        clic_rs[i,100::] = clic_rs[i,::-1][100::]
+            
 
-    #plt.plot(clic_theta[0:200],clic_dt_t[-2,0:200])
+    #plt.plot(clic_theta[0:200],clic_rs[-2,0:200])
 
     ############ find the perturbed models:
     # Take static ROTORC model to CLIC grid:
@@ -340,7 +404,8 @@ def gen_fine_clic(p_angles_fine,xi_r,xi_t,dt_t,s_model,model,depth,inv_f,par):
     pert_t = np.empty((len(s_model_c[:,0]),depth))
     pmodels_fine = []
     for i in range(depth):
-        pert_r[:,i] = s_model_c[:,1]*(1.+inv_f*clic_xi_r[-i,:])
+        #pert_r[:,i] = s_model_c[:,1]*(1.+inv_f*clic_xi_r[-i,:])
+        pert_r[:,i] = s_model_c[:,1]+inv_f*clic_rs[-i,:]*clic_xi_r[-i,:]
         pert_t[:,i] = s_model_c[:,2]*(1.+inv_f*clic_dt_t[-i,:])
         for j in range(len(pert_t[:,i])):
             if pert_t[j,i]<7500.: pert_t[j,i]=7500.
@@ -360,7 +425,7 @@ def gen_fine_clic(p_angles_fine,xi_r,xi_t,dt_t,s_model,model,depth,inv_f,par):
         tmodel[:,3] = np.log10(g_pert)
         pmodels_fine.append(tmodel)
         
-#    plt.plot(clic_theta[0:200],pmodels_fine[2][:,2])
+    #plt.plot(clic_dt_t[0,:])
     return pmodels_fine
     
 def make_contour(r,var,model,vel,par,mode,x):
@@ -391,6 +456,9 @@ def make_contour(r,var,model,vel,par,mode,x):
     #theta = np.linspace(0,np.deg2rad(90),100)
     newt,n_r = np.meshgrid(theta,new_r[:,0])
 
+#    np.savetxt("/home/castaned/x.dat",(new_r*np.sin(newt)))
+#    np.savetxt("/home/castaned/y.dat",(new_r*np.cos(newt)))
+#    np.savetxt("/home/castaned/z.dat",(new_zp))
     
     plt.contourf((new_r*np.sin(newt)),(new_r*np.cos(newt)),new_zp, 100, cmap=plt.cm.gnuplot,vmax=np.max(new_zp), vmin=np.min(new_zp))
     plt.contourf((new_r*np.sin(newt)),-(new_r*np.cos(newt)),new_zp, 100, cmap=plt.cm.gnuplot,vmax=np.max(new_zp), vmin=np.min(new_zp))
@@ -443,35 +511,40 @@ def list_gen(ells,nmin,nmax,tpe):
 ------------------------------------------------------
 
 """
-def run_pipeline(sub_dir="",minL=False):
-    global start,model,vel,modes,old_modes,modeloc,pmodels,pmodels_fine,modes_not_found
+def run_pipeline(modes,sub_dir="",minL=False,mm="1p875",vv=0,tph=0,drscale=None,tcut=False):
+    global start,model,vel,old_modes,modeloc,pmodels,pmodels_fine,modes_not_found,mds
     #MODE info:
-    par = "ODD"
-    model = ["2"]
-    vel =  8 #index, not velocity!
-    #modes = list_gen([0,1,2,3,4,5,6],1,3,"p")
-    modes = list_gen([0,1,2,3,4,5,6,7,8,9,10],1,1,"p")
+    
+    model = [mm]
+    vel = vv #index, not velocity!
+    #modes = list_gen([0,1,2,3,4,5,6,7,8,9,10],5,5,"p")
+    #list_gen([0,1,2,3],1,1,"p")
+    #modes = list_gen([2],8,8,"p")
     #["1 p1","1 p2","1 p3","1 p4","1 p5", "1 p6", "1 p7", "1 p8", "1 p9"]
     #["0 1H","0 2H","0 3H","0 4H","0 5H","0 6H","0 7H","0 8H","0 9H","0 10H"]
+    #par = emode(mm,vv,modes[0]).parity
     
     
-    
-    clic = True
-    new_mags = True
-    save_perturbation = True
+    clic = False
+    new_mags = False
+    save_perturbation = False
     only_mags = False
 
     
-    incl = [0,10,20,30,40,50,60,70,80,90]
+    incl = list(np.arange(0,95,10))
     #incl = [90]
     
     
     reese = False
     force_f = False
-    f_freq = 3.16
+    f_freq = 1.22
+       
+    phase = tph
+    ampl = 1./2.2
+    tlmax = 4.14 #radians (sigma*t of phased Lmax)
     
     #### contour plotting option:
-    plot_contour = False
+    plot_contour = True
     excl = 20 #How many core zones to exclude
     ####
     
@@ -494,6 +567,7 @@ def run_pipeline(sub_dir="",minL=False):
             modes = find_index(freqs,model,vel,par)
     
     parity = []
+    modesx = []
     if mode_by_name==True:
         for i in range(len(modes)):
             if int(modes[i].split()[0])%2==0:
@@ -504,7 +578,7 @@ def run_pipeline(sub_dir="",minL=False):
             parity.append(par)
             idx_tmp = index_by_name(model,vel,par,modes[i])
             print modes[i],"->",idx_tmp
-            modes[i] = idx_tmp
+            modesx.append(idx_tmp)
     
             
     start = timer()
@@ -512,9 +586,10 @@ def run_pipeline(sub_dir="",minL=False):
     rem = 0
     
     modes_not_found = []
-    for mode in modes:
+    for mode in modesx:
+        par = emode(mm,vv,mds[modesx.index(mode)]).parity
         if mode == 999:
-            modes_not_found.append(old_modes[rem])
+            modes_not_found.append(old_modes[modes.index(mode)])
             continue
         
         rem += 1
@@ -526,23 +601,26 @@ def run_pipeline(sub_dir="",minL=False):
         if force_f==True:
             sigma=f_freq
         else:
-            sigma = find_sigma(model,vel,par,mode)
-            
+            #sigma = find_sigma(model,vel,par,mode)
+            sigma = emode(mm,vv,old_modes[modesx.index(mode)]).frequency
+          
             
         #Find the perturbed models!
     
-        modeloc,pmodels,pmodels_fine = run_visc_pert(model,vel,mode,par,sigma,reese,force_f,minL)
+        modeloc,pmodels,pmodels_fine = run_visc_pert(model,vel,mode,par,sigma,reese,force_f,minL,phase,ampl,tlmax,tcut)
         modeloc += sub_dir
         if not os.path.exists(modeloc):
             os.makedirs(modeloc)
         
+        print modeloc
+        print mds[modesx.index(mode)]
         nrzone = len(dt_t[:,0])    
         
         if plot_contour == True:
             make_contour(r,-zp*cs,model,vel,par,mode,excl)
             
         if save_perturbation==True:
-            save_pert(modeloc,model,vel,par,mode,old_modes[modes.index(mode)])
+            save_pert(modeloc,model,vel,par,mode,old_modes[modesx.index(mode)])
         
         for i in range(len(pmodels)):
             np.savetxt(modeloc+"model_MODE_"+str(mode)+"_r"+str(nrzone - i),pmodels[i],'%.16e')
@@ -607,7 +685,7 @@ def run_pipeline(sub_dir="",minL=False):
                     os.chdir(modeloc+'tmp')
                     
                     
-                    pyclic.run_CLIC("model_MODE_"+str(mode)+"_r"+str(rzone),[i],False,3000.,12099.,2.0,par,dt_grid,fine_model=True)
+                    pyclic.run_CLIC("model_MODE_"+str(mode)+"_r"+str(rzone),[i],False,3000.,7499.,10.0,par,dt_grid,fine_model=True,savexi=True)
                     
                     cmag.calc_mags('outputflux_i'+str(i)+'.final',[i],mode,rzone)
                     cmag.calc_walraven('outputflux_i'+str(i)+'.final',[i],mode,rzone)
@@ -660,38 +738,72 @@ def run_pipeline(sub_dir="",minL=False):
     
                 os.chdir(vis_path)
         print mode
-#plt.plot(xi_r_rot[-1,:],label=r"$\xi_{r}$")
-#plt.plot(xi_t_rot[0,:])
-#plt.plot(dt_t_rot[-1,:],label=r"$dT/T$")
-#plt.legend(loc="best")
-#plt.grid()
-#freqs = [1.58717,2.05922,2.49359,2.95717,3.46299,3.99529,4.54267,5.09092,5.64618] # l=0, M2p5 V=0
-#modes = [51, 69, 78, 85, 92, 100, 106, 114, 122] # l=0, M2p5 V=0
+#        plt.plot(0.02*xi_t[:,3]/np.max(m4p4_xi_r[-10,:]),"-",alpha=0.8,label=old_modes[modes.index(mode)])
+#        plt.grid()
+#        plt.xlabel("Radial Zone")
+#        plt.ylabel(r"$\delta$T/T")
+#        plt.ylabel(r"$\xi_{r}$")
+#        plt.title(r"M=1.875M$\odot$ - V=0 - i=40deg")
+#        plt.legend(loc="best")
+        
+sns.set(style="white",rc={"figure.figsize": (8, 8),'axes.labelsize': 16,
+                              'ytick.labelsize': 12,'xtick.labelsize': 12,
+                              'legend.fontsize': 12,'axes.titlesize':18,'font.size':14})
+start = timer()
+#varr = [0,4,6,7,8]
+#mselect = "1p875"
+#kind = "f"
+#r_ord = 0
+#mds = list_gen([0,2,3,4,5],r_ord,r_ord,kind)
+#mmaxarr = []
+#global tempmax
+#tempmax = np.array([0,0,0])
+#for m in mds:
+#    mmax = find_dr_ofmax(emode(mselect,0,m),10,range(10))
+#    t = mmax[np.argmax(mmax[:,-1])]
+#    if abs(t[2])>tempmax[2]:
+#        tempmax = t
+#    mmaxarr.append(mmax)
+global drtempmax
+#drtempmax = 2.28534e+00 #n=5
+#drtempmax = 3.3914441477217716 # n=2
+drtempmax = 3.111 # n=0
+#drtempmax = 4.4445 #8.889 # n=5 M2p5
+    
+for mnopq in [3]:       
+    mselect = "2"
+    kind = "p"
+    r_ord = mnopq
+    varr = [0]
+    mds = list_gen([6],r_ord,r_ord,kind)
+    
+    #with sns.color_palette("rainbow",n_colors=9):
+    for i in varr:
+         run_pipeline(mds,sub_dir="",mm=mselect,vv=i)
+#        run_pipeline(mds,sub_dir="minL/",minL=True,mm=mselect,vv=i)
+################## 
+#    for j in varr:
+#        run_pipeline(mds,sub_dir="phi_max/",mm=mselect,vv=j,tph=123.)
+#        run_pipeline(mds,sub_dir="phi_min/",minL=True,mm=mselect,vv=j,tph=123.)
+#################        
+#    for j in varr:
+#        run_pipeline(mds,sub_dir="cut_max/",mm=mselect,vv=j,tph=0.,tcut=True)
+#        run_pipeline(mds,sub_dir="cut_min/",minL=True,mm=mselect,vv=j,tph=0.,tcut=True)
 
-#freqs = [0.83464,1.17430,1.60199,1.94807,2.36756,2.86427,3.38705,3.92415,4.47259,5.01979] # l=2, M2p5 V=0
-#modes = [8,34,52,66,76,84,90]
+#if kind !="g":
+#    plt.title(r"M="+mselect+"M$_{\odot}$ - $\ell$ = "+mds[0].split()[0] + ", n = "+mds[0].split()[1].strip("p").strip("h").strip("f").strip("F").strip("g"))
+#else:
+#    plt.title(r"M="+mselect+"M$_{\odot}$ - $\ell$ = "+mds[0].split()[0] + ", n = -"+mds[0].split()[1].strip("p").strip("h").strip("f").strip("F").strip("g"))
 
-#freqs = [0.85613,1.03514,1.28624,1.54099,1.79625,2.12890,2.64669,3.17963] # l=4 M2p5 V=0
-#modes = [12,26,40,49,61,72,80]
-
-
-#freqs = [1.11169,1.30506,1.55074,1.63928,1.97688,2.25056,2.82636,3.39865] # l=6 M2p5 V=0
-#modes = [31, 42, 50, 55, 67, 75, 83, 91]
-
-#freqs = [0.78296,1.63480,2.16027,2.66899,3.18255,3.70941] #l=1 M2p5 V=0
-#modes = [5, 61,81,89,96,104] #l=1 M2p5 V0
-
-#freqs = [1.08830,1.42856,1.68216,2.06952,2.54134,3.04737,3.57597] #l=3 M2p5 V=0
-#modes = [34, 52, 64, 78, 87, 94, 102]
-
-#freqs = [0.85367,0.99406,1.18376,1.43741,1.59521,1.90170,2.18703,2.73819,3.29288,3.85415] # l=5 M2p5 V=0
-#freqs = [1.43741,1.59521,1.90170,2.18703,2.73819]
-
-run_pipeline(sub_dir="")
-run_pipeline(sub_dir="minL/",minL=True)
-
-
+#ody = plt.ylim()
+#odx = plt.xlim()
+#plt.vlines(10,ody[0],ody[1],linestyles="--",alpha=0.5)
+#plt.ylim(ody[0],ody[1])
+#plt.hlines(0,odx[0],odx[1],linestyles="--",alpha=0.5)
+#plt.xlim(odx[0],odx[1])
+#plt.title(r"M="+mselect+"M$_{\odot}$ - V = 0 km/s, n = "+mds[0].split()[1].strip("p").strip("h").strip("f").strip("F").strip("g"))
+plt.grid()
 end = timer()
-print modes_not_found
+#print modes_not_found
 print "time:",end-start
 

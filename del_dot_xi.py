@@ -466,18 +466,19 @@ def calcdeldotxi(par,model,vel,modeloc,modefname):
     dt_t = -(g3m1)*deldotxi10
     #dt_t_e13 = -(g3m1)*deldotxi10_e13
     
-    print dt_t[-1,:]
+    print "dt_t, last zone: ", dt_t[-10,:]
     #print dt_t_e13[-1,:]
     
-    return xi_r,xi_t,dt_t,dPhi*PIGR/Rsun,RS,dP,sigma,VS
+    return xi_r,xi_t,dt_t,dPhi,RS,dP,sigma,VS,[GR,GT]
 
-def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth,reese,sig,par):
+def norm_and_scale(xi_r,xi_t,dt_t,rs,ZG,norm_f,scale,depth,reese,sig,par):
     global folder, rotorc_f
     
     
     xi_r_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     xi_t_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     dt_t_n = np.empty(xi_r[-(depth+1):-1,:].shape)
+    rs_n = np.empty(rs[-(depth+1):-1,:].shape)
     ZG_n = np.empty(xi_r[-(depth+1):-1,:].shape)
     
     import legendre_interp as lint
@@ -486,14 +487,26 @@ def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth,reese,sig,par):
         xi_r_fine = lint.leg_interp(xi_r[-depth::,:],8,"EVEN")
     else:
         xi_r_fine = lint.leg_interp(xi_r[-depth::,:],8,"OE")
-
+    
+    rs_n = np.empty(xi_r_fine.shape)
+    for d in range(depth):
+        rs_n[d,:] = np.interp(np.linspace(0,90,100),np.linspace(10,80,8),rs[-d-1,:])
+        
+    dr_n = xi_r_fine*rs_n[-depth::,:]
+    #[plt.plot(xi_r_fine[i,:]) for i in range(len(xi_r_fine[:,0])) ]
     #print "omega = ",sig
     #scale = scale/(sig**2)
     if norm_f:    
         for i in np.arange(-(depth),0,1):
-            #i_max=np.argmax(np.abs(xi_r[i,:]))
             i_max=np.argmax(np.abs(xi_r[i,:]))
-            vmax = np.max(np.abs(xi_r_fine[i,:]))
+            i_max_fine=np.argmax(np.abs(xi_r_fine[i,:]))
+            i_max_fine=np.argmax(np.abs(dr_n[i,:]))
+            #vmax = np.max(np.abs(xi_r_fine[i,:]))
+            #vmax = 1.*xi_r_fine[i,i_max_fine]
+            vmax = 1.*dr_n[i,i_max_fine]
+            #vmax = 1.*xi_r[i,0]
+            #vmax = 1.
+#            print "VMAX-------",vmax, xi_r[i,:]
 #            xi_r_n[i,:] =  xi_r[i,:]/xi_r[i,i_max]
 #            xi_t_n[i,:] =  xi_t[i,:]/xi_r[i,i_max]
 #            dt_t_n[i,:] =  dt_t[i,:]/xi_r[i,i_max]
@@ -502,39 +515,42 @@ def norm_and_scale(xi_r,xi_t,dt_t,ZG,norm_f,scale,depth,reese,sig,par):
             xi_t_n[i,:] =  xi_t[i,:]/vmax
             dt_t_n[i,:] =  dt_t[i,:]/vmax
             ZG_n[i,:] =  ZG[i,:]/vmax
-        
+            dr_n[i,:] = dr_n[i,:]/vmax
+            
         xi_r_n *= scale
         xi_t_n *= scale
         dt_t_n *= scale
         ZG_n *= scale
+        dr_n *= scale
+        #print xi_r_n
     else:
         xi_r_n = xi_r * scale
         xi_t_n = xi_t * scale
         dt_t_n = dt_t * scale
         ZG_n = ZG * scale
     
-    t_reese = scale/(sig**2)
-    tmp=(np.max(np.sqrt(xi_r[:,:]**2+xi_t[:,:]**2)))
-    print "Reese normalization:",t_reese*(1./tmp)
-    if reese:
-        """
-        for i in np.arange(-(depth),0,1):
-            i_max=np.argmax(np.abs(xi_r[i,:]))
-            xi_r_n[i,:] =  xi_r[i,:]/xi_r[i,i_max]
-            xi_t_n[i,:] =  xi_t[i,:]/xi_r[i,i_max]
-            dt_t_n[i,:] =  dt_t[i,:]/xi_r[i,i_max]
-            ZG_n[i,:] =  ZG[i,:]/xi_r[i,i_max]
-        """
-        
-        xi_r_n = xi_r[-(depth+1):-1,:]*t_reese*(1./tmp)
-        xi_t_n = xi_t[-(depth+1):-1,:]*t_reese*(1./tmp)
-        dt_t_n = dt_t[-(depth+1):-1,:]*t_reese*(1./tmp)
-        ZG_n = ZG[-(depth+1):-1,:]*t_reese*(1./tmp)
-        #print "Reese normalization: "+str(t_reese)
+#    t_reese = scale/(sig**2)
+#    tmp=(np.max(np.sqrt(xi_r[:,:]**2+xi_t[:,:]**2)))
+#    print "Reese normalization:",t_reese*(1./tmp)
+#    if reese:
+#        """
+#        for i in np.arange(-(depth),0,1):
+#            i_max=np.argmax(np.abs(xi_r[i,:]))
+#            xi_r_n[i,:] =  xi_r[i,:]/xi_r[i,i_max]
+#            xi_t_n[i,:] =  xi_t[i,:]/xi_r[i,i_max]
+#            dt_t_n[i,:] =  dt_t[i,:]/xi_r[i,i_max]
+#            ZG_n[i,:] =  ZG[i,:]/xi_r[i,i_max]
+#        """
+#        
+#        xi_r_n = xi_r[-(depth+1):-1,:]*t_reese*(1./tmp)
+#        xi_t_n = xi_t[-(depth+1):-1,:]*t_reese*(1./tmp)
+#        dt_t_n = dt_t[-(depth+1):-1,:]*t_reese*(1./tmp)
+#        ZG_n = ZG[-(depth+1):-1,:]*t_reese*(1./tmp)
+#        #print "Reese normalization: "+str(t_reese)
         
         
     
-    return xi_r_n,xi_t_n,dt_t_n,ZG_n
+    return xi_r_n,xi_t_n,dt_t_n,ZG_n,dr_n
     
 def to_rotorc(xi_r_n,xi_t_n,dt_t_n,ZG_n):
     nro_ang = np.linspace(10,80,8)
